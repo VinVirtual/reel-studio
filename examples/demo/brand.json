@@ -1,0 +1,55 @@
+{
+ "name": "reel-studio",
+ "format": "landscape",
+ "wordmark": [
+  {
+   "text": "reel"
+  },
+  {
+   "text": "-studio",
+   "color": "accent"
+  }
+ ],
+ "logo": null,
+ "colors": {
+  "bg": "#0a0f22",
+  "panel": "#121934",
+  "panel2": "#1a2244",
+  "text": "#edf0fa",
+  "soft": "#9aa5c4",
+  "mute": "#6f7a9c",
+  "accent": "#ffb04a",
+  "accent2": "#e8963a",
+  "good": "#2fa8a2",
+  "goodHi": "#45d6cf",
+  "bad": "#D2675B",
+  "badHi": "#F0A79D"
+ },
+ "fonts": {
+  "display": {
+   "family": "Fraunces",
+   "file": "fonts/Fraunces-Italic.ttf",
+   "style": "italic",
+   "weight": 500
+  },
+  "body": {
+   "family": "Geist",
+   "file": "fonts/Geist.ttf"
+  }
+ },
+ "background": "glow-dots",
+ "captions": true,
+ "voice": "am_michael",
+ "speed": 1.05,
+ "lang": "en-us",
+ "pronounce": {
+  "\\bJSON\\b": "jay-son",
+  "\\bMP4\\b": "M P four"
+ },
+ "music": {
+  "on": true,
+  "bpm": 100,
+  "chords": "Am-F-C-G",
+  "volume": 0.55
+ }
+}

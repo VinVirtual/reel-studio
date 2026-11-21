@@ -1,0 +1,169 @@
+{
+ "lead": 0.3,
+ "pause": 0.4,
+ "tail": 2.2,
+ "scenes": [
+  {
+   "id": "hook",
+   "type": "title",
+   "kicker": "REEL-STUDIO",
+   "title": "A video from\na text file",
+   "chips": [
+    "No camera",
+    "No editor",
+    "Runs locally"
+   ],
+   "say": "This video started as a text file.",
+   "keys": [
+    "text",
+    "file."
+   ]
+  },
+  {
+   "id": "flow",
+   "type": "steps",
+   "tag": "HOW IT WORKS",
+   "title": "Four steps",
+   "items": [
+    {
+     "text": "Script",
+     "at": "script"
+    },
+    {
+     "text": "Voice",
+     "at": "voice"
+    },
+    {
+     "text": "Frames",
+     "at": "frames"
+    },
+    {
+     "text": "Video",
+     "at": "video"
+    }
+   ],
+   "say": "You write a script. A voice reads it. Frames are drawn to match, and it all becomes one video.",
+   "keys": [
+    "script.",
+    "video."
+   ]
+  },
+  {
+   "id": "parts",
+   "type": "diagram",
+   "tag": "THE PARTS",
+   "title": "What feeds what",
+   "nodes": [
+    {
+     "id": "script",
+     "label": "Script",
+     "at": "script"
+    },
+    {
+     "id": "brand",
+     "label": "Brand",
+     "at": "brand"
+    },
+    {
+     "id": "voice",
+     "label": "Voice",
+     "at": "voice"
+    },
+    {
+     "id": "frames",
+     "label": "Frames",
+     "at": "frames"
+    },
+    {
+     "id": "video",
+     "label": "Video",
+     "tone": "fix",
+     "at": "video"
+    }
+   ],
+   "edges": [
+    {
+     "from": "script",
+     "to": "voice"
+    },
+    {
+     "from": "script",
+     "to": "frames"
+    },
+    {
+     "from": "brand",
+     "to": "frames"
+    },
+    {
+     "from": "voice",
+     "to": "video"
+    },
+    {
+     "from": "frames",
+     "to": "video"
+    }
+   ],
+   "say": "The script and the brand file feed the voice and the frames, and those two make the video.",
+   "keys": [
+    "script",
+    "video."
+   ]
+  },
+  {
+   "id": "write",
+   "type": "bullets",
+   "tone": "fix",
+   "tag": "YOU WRITE",
+   "title": "Two small files",
+   "items": [
+    {
+     "text": "The words to say",
+     "at": "words"
+    },
+    {
+     "text": "What to show",
+     "at": "show"
+    },
+    {
+     "text": "Colours and fonts",
+     "at": "colours"
+    }
+   ],
+   "say": "You write the words to say, what to show, and your colours and fonts.",
+   "keys": [
+    "words",
+    "show,"
+   ]
+  },
+  {
+   "id": "cost",
+   "type": "stat",
+   "tone": "fix",
+   "tag": "RUNS LOCALLY",
+   "title": "Paid services needed",
+   "count": {
+    "from": 3,
+    "to": 0,
+    "at": "paid",
+    "dur": 0.9
+   },
+   "label": "paid services",
+   "note": "voice, frames and encoding run on your machine",
+   "say": "The number of paid services it needs is zero.",
+   "keys": [
+    "zero."
+   ]
+  },
+  {
+   "id": "cta",
+   "type": "cta",
+   "title": "Make your own",
+   "button": "Get the skill",
+   "url": "github.com/VinVirtual/reel-studio",
+   "say": "It is free and open. Get the skill, and make your own.",
+   "keys": [
+    "own."
+   ]
+  }
+ ]
+}
