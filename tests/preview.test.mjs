@@ -48,3 +48,82 @@ test('the server only hands out files inside the project', () => {
   assert.equal(safeJoin('/p/proj', 'a/../../proj-two/x'), null)
   assert.equal(safeJoin('/p/proj', '..'), null)
 })
+
+/* ---------- the server, over HTTP ---------- */
+import { request } from 'node:http'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync, chmodSync, unlinkSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { startPreview, parseRange, allowedHost } from '../engine/lib/preview.mjs'
+
+/** a tiny project with a voice track of 1000 known bytes, a dot-file, and a link to a file outside it */
+function project() {
+  const root = mkdtempSync(join(tmpdir(), 'reel-preview-')), P = join(root, 'proj')
+  mkdirSync(join(P, 'build', 'script'), { recursive: true }); mkdirSync(join(P, 'assets'))
+  writeFileSync(join(P, 'brand.json'), '{}'); writeFileSync(join(P, 'script.json'), JSON.stringify(script()))
+  writeFileSync(join(P, 'build', 'script.timeline.json'), JSON.stringify(timeline()))
+  writeFileSync(join(P, 'build', 'script', 'mix.wav'), Buffer.from(Array.from({ length: 1000 }, (_, i) => i % 256)))
+  writeFileSync(join(P, 'assets', 'a.png'), 'png'); writeFileSync(join(P, '.env'), 'SECRET=1')
+  writeFileSync(join(root, 'outside.txt'), 'outside'); symlinkSync(join(root, 'outside.txt'), join(P, 'assets', 'link.txt'))
+  return { root, P }
+}
+function get(port, path, headers = {}) {
+  return new Promise((done, fail) => {
+    const req = request({ host: '127.0.0.1', port, path, headers: { host: `127.0.0.1:${port}`, ...headers } }, (res) => {
+      const parts = []; res.on('data', (d) => parts.push(d)); res.on('end', () => done({ status: res.statusCode, headers: res.headers, body: Buffer.concat(parts) }))
+    })
+    req.on('error', fail); req.end()
+  })
+}
+async function withServer(fn) {
+  const { root, P } = project(), { server, url } = await startPreview({ P, name: 'script', port: 0 })
+  try { await fn(Number(new URL(url).port), P) } finally { server.close(); rmSync(root, { recursive: true, force: true }) }
+}
+
+test('parseRange: one range, open ranges, suffix ranges, and what cannot be served', () => {
+  assert.equal(parseRange(undefined, 100), null); assert.equal(parseRange('items=0-5', 100), null); assert.equal(parseRange('bytes=0-1,5-6', 100), null)
+  assert.deepEqual(parseRange('bytes=10-19', 100), { start: 10, end: 19 })
+  assert.deepEqual(parseRange('bytes=90-', 100), { start: 90, end: 99 })
+  assert.deepEqual(parseRange('bytes=90-500', 100), { start: 90, end: 99 })
+  assert.deepEqual(parseRange('bytes=-10', 100), { start: 90, end: 99 })
+  for (const bad of ['bytes=100-', 'bytes=20-10', 'bytes=-', 'bytes=-0', 'bytes=a-b']) assert.equal(parseRange(bad, 100), 'unsatisfiable', bad)
+})
+
+test('allowedHost: only this port on loopback names', () => {
+  for (const ok of ['127.0.0.1:4173', 'localhost:4173', 'LOCALHOST:4173', '[::1]:4173']) assert.ok(allowedHost(ok, 4173), ok)
+  for (const bad of ['evil.example:4173', '127.0.0.1:80', '127.0.0.1', '', undefined]) assert.ok(!allowedHost(bad, 4173), String(bad))
+})
+
+test('the audio is served in byte ranges, so the player can seek', () => withServer(async (port) => {
+  const all = await get(port, '/audio')
+  assert.equal(all.status, 200); assert.equal(all.headers['accept-ranges'], 'bytes'); assert.equal(all.body.length, 1000)
+  const part = await get(port, '/audio', { range: 'bytes=500-509' })
+  assert.equal(part.status, 206); assert.equal(part.headers['content-range'], 'bytes 500-509/1000'); assert.equal(part.headers['content-length'], '10')
+  assert.deepEqual([...part.body], Array.from({ length: 10 }, (_, i) => (500 + i) % 256))
+  const tail = await get(port, '/audio', { range: 'bytes=990-' })
+  assert.equal(tail.status, 206); assert.equal(tail.body.length, 10)
+  const bad = await get(port, '/audio', { range: 'bytes=5000-' })
+  assert.equal(bad.status, 416); assert.equal(bad.headers['content-range'], 'bytes */1000')
+}))
+
+test('the server answers only to its own host names', () => withServer(async (port) => {
+  assert.equal((await get(port, '/audio', { host: 'evil.example' })).status, 403)
+  assert.equal((await get(port, '/audio', { host: `evil.example:${port}` })).status, 403)
+  assert.equal((await get(port, '/audio', { host: `localhost:${port}` })).status, 200)
+}))
+
+test('project files: no hidden files, no way out, no links out', () => withServer(async (port) => {
+  assert.equal((await get(port, '/project/assets/a.png')).status, 200)
+  for (const path of ['/project/.env', '/project/.git/config', '/project/assets/..%2F.env', '/project/..%2F..%2Fetc%2Fpasswd', '/project/assets/link.txt'])
+    assert.equal((await get(port, path)).status, 404, path)
+}))
+
+test('a file that vanishes or cannot be read is an error answer, and the server keeps running', { skip: process.getuid && process.getuid() === 0 ? 'root can read any file' : false }, () => withServer(async (port, P) => {
+  const wav = join(P, 'build', 'script', 'mix.wav')
+  chmodSync(wav, 0o000)
+  assert.equal((await get(port, '/audio')).status, 500)
+  chmodSync(wav, 0o644); unlinkSync(wav)
+  assert.equal((await get(port, '/audio')).status, 404)
+  writeFileSync(wav, 'back again')
+  assert.equal((await get(port, '/audio')).body.toString(), 'back again')
+}))
