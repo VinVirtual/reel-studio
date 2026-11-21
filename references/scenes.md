@@ -12,9 +12,9 @@ Every scene needs `id`, `type` and `say`. Common optional fields:
 | `stamp` | `{"label": "NO REPLY", "at": "word", "tone": "problem"}` slams a stamp over the body |
 | `hold`, `sfx`, `voice`, `speed` | timing and audio overrides |
 
-`at: "word"` (on items, rows, chips, steps, nodes, edges, bars) makes an element appear when that word is spoken. It matches the first spoken word equal to it (case and punctuation ignored), and otherwise the first word that starts with it. Without `at`, items stagger across the voice-over. Items can be plain strings or `{"text", "at", "icon"}` objects.
+`at: "word"` (on items, rows, chips, steps, nodes, edges, bars, code lines, milestones) makes an element appear when that word is spoken. It matches the first spoken word equal to it (case and punctuation ignored), and otherwise the first word that starts with it. Without `at`, items stagger across the voice-over. Items can be plain strings or `{"text", "at", "icon"}` objects.
 
-Scenes that hold a block of content (bullets, compare, steps, chat, card, quote) shrink it to fit the body area. `reel lint` reports anything that still overflows.
+Scenes that hold a block of content (bullets, compare, steps, chat, card, quote, code, timeline) shrink it to fit the body area. `reel lint` reports anything that still overflows.
 
 ## title
 Big statement. Use it for the hook, a chapter card or an outro.
@@ -88,6 +88,38 @@ A bar chart that grows. Labels are on screen from the start. Each bar grows, and
  "note": "Placeholder numbers", "say": "Option A, then option B."}
 ```
 
+## code
+A code editor or a terminal window whose lines type themselves in.
+`lines: ["text", {text, at, tone}]` (or `code`, one string with line breaks), `file`, `lang`, `variant`, `mode`, `highlight`, `numbers`, `prompt`, `size`.
+- `variant`: `editor` (the default: line numbers and light syntax colouring) or `terminal` (no line numbers; a line that starts with the prompt, `$ ` unless you set `prompt`, is a command and types on, any other line is output and appears whole).
+- A line starts at its `at` word, or the lines take turns across the voice-over. Typing finishes before the next line starts.
+- `mode`: `type` (the default) or `lines` (each line appears whole).
+- `highlight` marks lines with a coloured band and dims the rest: a line number (`2`), a list (`[2, 3]`), or `{"line": 2, "at": "word"}` to time it. Lines count from 1. Without `at` it comes on after the last line. The scene's `tone` sets the band colour.
+- `tone` on a line colours it: `fix` (green), `problem` (red), `mute` (grey). Use it for output such as a success or an error message.
+- `file` is the name in the title bar. `lang` picks the comment style for colouring (`js`, `python`, `bash`, `toml`, `sql`…); `"lang": "text"` switches colouring off. The colouring is simple: comments, strings, numbers and common keywords.
+- `numbers: false` hides the line numbers. `size` is the largest font size in pixels (38 by default).
+- The text shrinks until the longest line and all the rows fit. Keep to about 12 lines of 56 characters or fewer; lint warns beyond that, and reports text that still does not fit.
+- The font is JetBrains Mono, or `fonts.mono` in brand.json.
+- Label made-up output as an example (for instance `"tag": "EXAMPLE OUTPUT"`).
+```json
+{"id": "run", "type": "code", "tag": "EXAMPLE OUTPUT", "title": "One command", "variant": "terminal",
+ "lines": [{"text": "$ npm test", "at": "run"}, {"text": "12 passed", "tone": "fix", "at": "pass"}],
+ "highlight": {"line": 2, "at": "pass"}, "say": "Run the tests and watch them pass."}
+```
+
+## timeline
+Milestones along a line, dated or just in order. The line and every label are on screen from the start, dimmed. The line runs to each milestone, and it lights up, when its word is spoken.
+`items: [{date, text, note, at, tone}]` (or plain strings), `direction`.
+- `date` is the short label beside the dot: a year, `"Week 2"`, `"Step 1"`. Leave it out for a plain ordered list of milestones.
+- `note` is a small second line. `tone` on an item (`fix` | `problem` | `mute`) colours its dot and date; `tone` on the scene colours the line.
+- `direction`: `row` (the line runs across, the default for up to 5 milestones on square and landscape frames) or `column` (the line runs down the left, the default on vertical frames).
+- Keep `text` to 5 words and `date` to 3. Only use real dates and events, or label them as an example.
+```json
+{"id": "plan", "type": "timeline", "tag": "THE PLAN", "title": "Three weeks",
+ "items": [{"date": "Week 1", "text": "Write", "at": "write"}, {"date": "Week 2", "text": "Review", "at": "review"}, {"date": "Week 3", "text": "Ship", "at": "ship"}],
+ "say": "First we write, then we review, then we ship."}
+```
+
 ## quote
 A review or testimonial card with stars.
 `text`, `author`, `meta`, `stars`. Only use real reviews, or label it clearly as an example.
@@ -102,8 +134,9 @@ Closing card: the brand mark (logo or wordmark), `title`, `comment` (types itsel
 `{"type": "custom", "fn": "name", ...any fields}` calls `window.CUSTOM.name(t, s, api, A)` from `<project>/custom.js`. The header (tag and title) is drawn for you. `api` exposes:
 - the canvas and sizes: `ctx`, `W`, `H`, `L` (layout), `C` (colours), `IMG`
 - easing and timing: `prog(t, start, dur)`, `outCubic`, `outBack`, `io`, `lerp`, `clamp`, `rgba(hex, a)`, `wt(s, "word")`, `revealAt(s, item, i, n)`
-- drawing: `panel`, `text`, `wrap`, `wrapLines`, `pill`, `icon`, `star`, `avatar`, `stamp`, `button`, `arrow`, `brandMark`, `drawImage`, `rr`
+- drawing: `panel`, `text`, `wrap`, `wrapLines`, `pill`, `icon`, `star`, `avatar`, `stamp`, `button`, `arrow`, `brandMark`, `drawImage`, `rr`, `glow`
+- the brand's look: `style` (the resolved `style` block: `corners`, `shadow`, `border`, …) and `cased(title)`, which applies `titleCase`. `panel`, `rr`, `button` and `glow` already follow the style, so use them rather than drawing rounded boxes and shadows by hand
 - fitting: `fitBody(height)` shrinks what you draw next so a block of that height fits the body area, and `fit` holds the layout maths (`fit.fitRows`, `fit.fitText`, `fit.layoutDiagram`)
 - `TYPES`, to draw a built-in type inside a custom scene
 
-`text(s, x, y, {size, weight, color, align, display: true for the headline font, italic})`. Colours accept a palette key (`'accent'`, `'soft'`, `'good'`…) or a hex value. Coordinates are layout pixels (`W` × `H`), which can be fewer than the output pixels with the `embed` format or `density`. Animate only from `t`; never use timers or randomness without a seed, so frames stay deterministic. Frames are drawn in several browser pages at once and out of order, so a scene must not keep state between frames. See `templates/custom.js` for a calendar example.
+`text(s, x, y, {size, weight, color, align, display: true for the headline font, mono: true for the code font, italic})`. Colours accept a palette key (`'accent'`, `'soft'`, `'good'`…) or a hex value. Coordinates are layout pixels (`W` × `H`), which can be fewer than the output pixels with the `embed` format or `density`. Animate only from `t`; never use timers or randomness without a seed, so frames stay deterministic. Frames are drawn in several browser pages at once and out of order, so a scene must not keep state between frames. See `templates/custom.js` for a calendar example.
