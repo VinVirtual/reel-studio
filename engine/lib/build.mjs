@@ -20,7 +20,7 @@ export function fingerprints(P, name, options = {}) {
     const images = [brand.logo, ...sc.scenes.flatMap((s) => [s.src, ...(s.images || [])])].filter(Boolean).map((f) => join(P, f))
     assets = [...images, fontPath(P, brand.fonts?.display), fontPath(P, brand.fonts?.body), fontPath(P, brand.fonts?.mono || MONO_FONT)].filter(Boolean)
   } catch {} // a broken script still gets a fingerprint; the build step reports the real error
-  const audio = hashOf([script, brandText, fileOr(join(ENGINE, 'gen_audio.py'))])
+  const audio = hashOf([script, brandText, fileOr(join(ENGINE, 'gen_audio.py')), fileOr(join(ENGINE, 'word_timing.py'))])
   const video = hashOf([audio, fileOr(join(P, 'custom.js')), ...assets.map(fileOr), ...engineFiles(), JSON.stringify({ captions: options.captions, lossless: options.lossless, quality: options.quality, format: options.format })])
   const web = hashOf([video, JSON.stringify({ size: options.webSize, crf: options.webCrf, dir: options.webDir, posterAt: options.posterAt })])
   return { audio, video, web }

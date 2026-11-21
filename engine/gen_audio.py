@@ -4,6 +4,9 @@ usage:  python gen_audio.py <project_dir> [script_name]      (or: reel audio <pr
         script_name defaults to "script" (reads <project>/script.json)
         Run it with the Python that has kokoro-onnx installed (default: ~/kokoro/.venv/bin/python).
 
+        Word times come from the model's own phoneme durations when kokoro-onnx can report them (0.6 or newer,
+        see word_timing.py). Otherwise, or with REEL_TIMING=estimate, they are spread by syllable count.
+
 env     KOKORO_HOME    folder holding the model files (default ~/kokoro)
         KOKORO_MODEL   path of kokoro-v1.0.onnx (default $KOKORO_HOME/kokoro-v1.0.onnx)
         KOKORO_VOICES  path of voices-v1.0.bin  (default $KOKORO_HOME/voices-v1.0.bin)
@@ -55,19 +58,80 @@ VOICES = Path(os.environ.get("KOKORO_VOICES") or KO / "voices-v1.0.bin")
 for f in (MODEL, VOICES):
     if not f.is_file(): die(f"Kokoro model file not found: {f}\n  Download kokoro-v1.0.onnx and voices-v1.0.bin (see README.md) or set KOKORO_HOME.")
 CACHE = P / "build" / ".voice-cache"; CACHE.mkdir(parents=True, exist_ok=True)
-_kokoro = None
+MEASURE = os.environ.get("REEL_TIMING", "model") != "estimate" and hasattr(Kokoro, "create_timed")
+_kokoro = None; _tokenizer = None; WHY_ESTIMATED = set()
+if not MEASURE: WHY_ESTIMATED.add("REEL_TIMING=estimate" if hasattr(Kokoro, "create_timed") else "this kokoro-onnx cannot report timings (0.6 or newer can)")
+
+
+def kokoro():
+    """The voice model, loaded only when something new must be spoken. When word times are measured it is
+    loaded with its phoneme durations exposed as a second output (the model file itself is not changed)."""
+    global _kokoro
+    if _kokoro is not None: return _kokoro
+    if MEASURE:
+        try:
+            import onnxruntime as ort, word_timing
+            from kokoro_onnx.session import resolve_providers
+            sess = ort.InferenceSession(word_timing.expose_durations(MODEL.read_bytes()), providers=resolve_providers())
+            sess._model_path = str(MODEL)  # from_session reads the path from here; a session made from bytes has none
+            _kokoro = Kokoro.from_session(sess, str(VOICES))
+            if not _kokoro.has_timings: raise ValueError("the model gave no duration output")
+            return _kokoro
+        except Exception as e:  # a different model or library version: fall back to the plain model and estimates
+            WHY_ESTIMATED.add(f"the model's durations could not be read ({e})")
+    _kokoro = Kokoro(str(MODEL), str(VOICES))
+    return _kokoro
 
 
 def speak(text, voice, speed):
-    """One phrase as float32 samples. Cached on disk by text, voice, speed and language."""
-    global _kokoro
+    """One phrase as (float32 samples, timing). timing is {"ph": phonemes, "starts": [seconds per phoneme]} or None.
+    Both are cached on disk by text, voice, speed and language."""
     key = hashlib.sha1(json.dumps([text, voice, speed, LANG, MODEL.name], ensure_ascii=False).encode()).hexdigest()
-    hit = CACHE / f"{key}.npy"
-    if hit.is_file(): return np.load(hit)
-    if _kokoro is None: _kokoro = Kokoro(str(MODEL), str(VOICES))  # loaded only when something new must be spoken
-    audio, _ = _kokoro.create(text, voice=voice, speed=speed, lang=LANG)
+    hit, thit = CACHE / f"{key}.npy", CACHE / f"{key}.timing.json"
+    if hit.is_file() and not MEASURE: return np.load(hit), None
+    if hit.is_file() and thit.is_file(): return np.load(hit), json.loads(thit.read_text(encoding="utf-8"))
+    k = kokoro(); timing = None
+    if MEASURE and getattr(k, "has_timings", False):
+        ph = k.tokenizer.phonemize(text, LANG)
+        if 0 < len(ph) <= 510:  # one batch: the same audio as create() gives, plus when each phoneme starts
+            audio, _, marks = k.create_timed(ph, voice=voice, speed=speed, lang=LANG, is_phonemes=True, sentence_pause=0, clause_pause=0)
+            if len(marks) == len(ph): timing = {"ph": ph, "starts": [round(m.start, 4) for m in marks]}
+        else: audio, _ = k.create(text, voice=voice, speed=speed, lang=LANG)
+    else: audio, _ = k.create(text, voice=voice, speed=speed, lang=LANG)
     y = audio.astype(np.float32); np.save(hit, y)
-    return y
+    if MEASURE: thit.write_text(json.dumps(timing, ensure_ascii=False), encoding="utf-8")
+    return y, timing
+
+
+def word_phonemes(word):
+    """Phonemes of one written word said on its own (after the brand's pronunciations). Cached on disk."""
+    global _tokenizer
+    cache = CACHE / "word-phonemes.json"
+    if not hasattr(word_phonemes, "known"):
+        try: word_phonemes.known = json.loads(cache.read_text(encoding="utf-8"))
+        except (OSError, ValueError): word_phonemes.known = {}
+    key = f"{LANG}|{spoken(word)}"
+    if key not in word_phonemes.known:
+        if _tokenizer is None:
+            from kokoro_onnx.tokenizer import Tokenizer
+            _tokenizer = _kokoro.tokenizer if _kokoro is not None else Tokenizer()
+        word_phonemes.known[key] = _tokenizer.phonemize(spoken(word), LANG)
+        word_phonemes.dirty = True
+    return word_phonemes.known[key]
+
+
+def measured(words, timing, cut, length):
+    """Start of each word in seconds from the start of the trimmed phrase, or None to fall back to an estimate."""
+    if not timing: return None
+    try:
+        import word_timing
+        starts = word_timing.word_starts([word_phonemes(w) for w in words], timing["ph"], timing["starts"], cut + length)
+    except Exception as e:
+        WHY_ESTIMATED.add(f"words could not be lined up ({e})"); return None
+    if starts is None: return None
+    out, low = [], 0.0
+    for s in starts: low = min(length, max(low, s - cut)); out.append(low)
+    return out
 
 
 def spoken(text):
@@ -76,10 +140,12 @@ def spoken(text):
 
 
 def trim(x, thr=0.01, pad=0.02):
+    """x without its leading and trailing silence, and how many seconds were cut from the front"""
     env = np.convolve(np.abs(x), np.ones(240) / 240, "same")
     idx = np.where(env > thr)[0]
-    if len(idx) == 0: return x
-    return x[max(0, idx[0] - int(pad * R)):min(len(x), idx[-1] + int(pad * R))]
+    if len(idx) == 0: return x, 0.0
+    a = max(0, idx[0] - int(pad * R))
+    return x[a:min(len(x), idx[-1] + int(pad * R))], a / R
 
 
 def syl(w):
@@ -110,15 +176,20 @@ def caption_groups(words, max_words=4):
     return out
 
 
-t = S.get("lead", 0.3); scenes = []; clips = []
+t = S.get("lead", 0.3); scenes = []; clips = []; counted = {"model": 0, "estimate": 0}
 for si, sc in enumerate(S["scenes"]):
     words = sc["say"].split()
     phrases = split_phrases(words)
     parts, wt, pos = [], [], 0.0
     for pi, p in enumerate(phrases):
-        y = trim(speak(spoken(" ".join(p)), sc.get("voice", VOICE), sc.get("speed", SPEED)))
+        raw, timing = speak(spoken(" ".join(p)), sc.get("voice", VOICE), sc.get("speed", SPEED))
+        y, cut = trim(raw)
         d = len(y) / R; tot = sum(syl(w) for w in p); acc = 0
-        for w in p: wt.append(round(pos + acc / tot * d * 0.96, 3)); acc += syl(w)
+        real = measured(p, timing, cut, d) if MEASURE else None
+        counted["model" if real else "estimate"] += 1
+        if real: wt += [round(pos + s, 3) for s in real]
+        else:
+            for w in p: wt.append(round(pos + acc / tot * d * 0.96, 3)); acc += syl(w)
         parts.append(y); pos += d
         if pi < len(phrases) - 1:
             gap = 0.26 if re.search(r"[.?!]$", p[-1]) else 0.12
@@ -137,7 +208,9 @@ for si, sc in enumerate(S["scenes"]):
     clips.append((t, x)); t += length
     print(f"{sc['id']:10s} {sc.get('type', '?'):8s} start {t - length:6.2f}  voice {dur:4.2f}s")
 total = round(t, 3)
-TIMELINE = {"total": total, "fps": S.get("fps", 30), "name": NAME, "scenes": scenes}
+if getattr(word_phonemes, "dirty", False): (CACHE / "word-phonemes.json").write_text(json.dumps(word_phonemes.known, ensure_ascii=False), encoding="utf-8")
+TIMING = "model" if not counted["estimate"] else "estimate" if not counted["model"] else "mixed"
+TIMELINE = {"total": total, "fps": S.get("fps", 30), "name": NAME, "timing": TIMING, "scenes": scenes}
 for opt in ("captions", "poster"):  # render options a script may set for itself
     if opt in S: TIMELINE[opt] = S[opt]
 (P / "build" / f"{NAME}.timeline.json").write_text(json.dumps(TIMELINE, indent=1), encoding="utf-8")
@@ -216,4 +289,6 @@ def norm(x): return (x / max(1.0, np.max(np.abs(x)) / 0.97)).astype(np.float32)
 
 sf.write(OUT / "mix.wav", norm(voice + sfx + music * MUSIC["volume"]), R)
 sf.write(OUT / "voice.wav", norm(voice + sfx), R)
+print("word times:", {"model": "from the model's phoneme durations", "estimate": "estimated from syllable counts", "mixed": f"from the model for {counted['model']} phrase(s), estimated for {counted['estimate']}"}[TIMING]
+      + (f"  ({'; '.join(sorted(WHY_ESTIMATED))})" if WHY_ESTIMATED else ""))
 print("total", total, "s  ->", P / "build" / f"{NAME}.timeline.json")
