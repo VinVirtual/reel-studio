@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>reel preview</title>
+<link rel="icon" href="data:,">
+<style>
+  :root { --ink: #ece7df; --dim: #8d857a; --line: #2c2823; --bg: #0f0d0b; --hot: #e8a678; --warn: #f0a79d; --mono: ui-monospace, "SF Mono", "DejaVu Sans Mono", Menlo, monospace }
+  * { box-sizing: border-box }
+  html, body { height: 100%; margin: 0 }
+  body { background: var(--bg); color: var(--ink); font: 13px/1.4 var(--mono); display: grid; grid-template-rows: auto 1fr auto; min-height: 100% }
+  header { display: flex; gap: 16px; align-items: baseline; padding: 10px 16px; border-bottom: 1px solid var(--line) }
+  header b { color: var(--hot); font-weight: 600; letter-spacing: 0.04em }
+  header span { color: var(--dim) }
+  #stale { color: var(--warn); margin-left: auto; text-align: right; max-width: 60ch }
+  main { display: grid; place-items: center; padding: 16px; min-height: 0; overflow: hidden }
+  canvas { max-width: 100%; max-height: calc(100vh - 170px); display: block; box-shadow: 0 0 0 1px var(--line), 0 24px 60px rgba(0, 0, 0, 0.6) }
+  footer { padding: 10px 16px 14px; border-top: 1px solid var(--line); display: grid; gap: 8px }
+  #marks { position: relative; height: 18px }
+  #marks button { position: absolute; top: 0; height: 18px; padding: 0 0 0 5px; border: 0; border-left: 1px solid var(--dim); background: none; color: var(--dim); font: 11px var(--mono); cursor: pointer; white-space: nowrap; overflow: hidden; text-align: left }
+  #marks button:hover, #marks button.on { color: var(--hot); border-left-color: var(--hot) }
+  #seek { width: 100%; margin: 0; accent-color: var(--hot) }
+  .row { display: flex; gap: 14px; align-items: center }
+  .row button { font: 13px var(--mono); color: var(--bg); background: var(--hot); border: 0; padding: 6px 14px; min-width: 76px; cursor: pointer }
+  .row button:focus-visible, #seek:focus-visible, #marks button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px }
+  .row label { color: var(--dim); display: flex; gap: 6px; align-items: center }
+  #time { font-variant-numeric: tabular-nums; min-width: 14ch }
+  kbd { color: var(--dim) }
+</style>
+</head>
+<body>
+<header><b>reel preview</b><span id="what"></span><span id="stale" role="status"></span></header>
+<main><canvas id="c" width="1080" height="1920"></canvas></main>
+<footer>
+  <div id="marks" aria-label="Scenes"></div>
+  <input id="seek" type="range" min="0" max="1" step="0.001" value="0" aria-label="Position in seconds">
+  <div class="row">
+    <button id="play" type="button">Play</button>
+    <span id="time">0.00 / 0.00 s</span>
+    <label><input id="caps" type="checkbox" checked> captions</label>
+    <label><input id="mute" type="checkbox"> mute</label>
+    <span style="margin-left:auto"><kbd>space</kbd> play · <kbd>←</kbd> <kbd>→</kbd> one frame · <kbd>shift</kbd> one second · reloads when a file changes</span>
+  </div>
+</footer>
+<audio id="voice" preload="auto"></audio>
+<script src="/engine/fit.js"></script>
+<script src="/engine/engine.js"></script>
+<script src="/engine/scenes.js"></script>
+<script src="/engine/scenes-explain.js"></script>
+<script src="/engine/scenes-dev.js"></script>
+<script>
+'use strict'
+const $ = (id) => document.getElementById(id), voice = $('voice'), seek = $('seek')
+let state = null, total = 0, fps = 30, ready = false, at = 0
+const fmt = (t) => t.toFixed(2)
+function draw(t) {
+  at = Math.max(0, Math.min(total, t))
+  if (ready) window.renderAt(at)
+  seek.value = at; $('time').textContent = `${fmt(at)} / ${fmt(total)} s`
+  if (state) for (const [i, b] of [...$('marks').children].entries()) { const s = state.timeline.scenes[i]; b.classList.toggle('on', at >= s.start - 0.08 && at < s.end) }
+}
+function go(t) { voice.currentTime = Math.max(0, Math.min(total, t)); draw(t) }
+async function load() {
+  const next = await (await fetch('/state')).json()
+  ready = false; state = next; total = next.timeline.total; fps = next.timeline.fps || 30
+  const origin = location.origin, fonts = Object.fromEntries(Object.entries(next.fonts).map(([k, f]) => [k, { ...f, url: f.url ? origin + f.url + '?v=' + next.version : undefined }]))
+  await window.setup({ timeline: next.timeline, brand: next.brand, base: origin + '/project/', fonts, custom: next.custom ? origin + next.custom : null, opts: { captions: $('caps').checked } })
+  seek.max = total; seek.step = 1 / fps
+  $('what').textContent = `${next.name} · ${next.brand.format || 'vertical'} · ${$('c').width}×${$('c').height} · ${fmt(total)} s`
+  $('stale').textContent = next.stale.length ? `Run "reel audio" to update the voice. ${next.stale.join('; ')}` : ''
+  const marks = $('marks'); marks.textContent = ''
+  next.timeline.scenes.forEach((s, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = s.id; b.title = `${s.id} (${s.type}) at ${fmt(s.start)} s`
+    b.style.left = (s.start / total * 100) + '%'; b.style.width = ((s.end - s.start) / total * 100) + '%'
+    b.addEventListener('click', () => go(s.start + 0.02)); marks.appendChild(b)
+  })
+  const keep = voice.currentTime
+  voice.src = '/audio?v=' + next.version; voice.currentTime = Math.min(keep, total)
+  ready = true; draw(Math.min(at, total))
+}
+function tick() { if (!voice.paused) draw(voice.currentTime); requestAnimationFrame(tick) }
+$('play').addEventListener('click', () => { if (voice.paused) { if (at >= total - 0.05) go(0); voice.play() } else voice.pause() })
+voice.addEventListener('play', () => { $('play').textContent = 'Pause' })
+voice.addEventListener('pause', () => { $('play').textContent = 'Play' })
+voice.addEventListener('ended', () => draw(total))
+seek.addEventListener('input', () => go(Number(seek.value)))
+$('caps').addEventListener('change', () => load().catch(report))
+$('mute').addEventListener('change', () => { voice.muted = $('mute').checked })
+document.addEventListener('keydown', (e) => {
+  if (e.target === seek || e.target.tagName === 'BUTTON') { if (e.key !== ' ' || e.target !== seek) return }
+  if (e.key === ' ') { e.preventDefault(); $('play').click() }
+  else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); voice.pause(); go(at + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 1 : 1 / fps)) }
+})
+function report(e) { $('stale').textContent = 'preview: ' + (e && e.message || e) }
+// reload when the script, brand, timeline, custom.js or audio changes on disk
+setInterval(async () => { try { const v = (await (await fetch('/state')).json()).version; if (state && v !== state.version) await load() } catch (e) { report(e) } }, 1200)
+load().then(() => requestAnimationFrame(tick)).catch(report)
+</script>
+</body>
+</html>

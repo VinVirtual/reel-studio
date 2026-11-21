@@ -469,7 +469,7 @@ window.lintScene = (i) => {
   const head = s.type === 'title' || s.type === 'cta' ? { ink: null, texts: [] } : measure(() => header(t, s, A))
   const caps = (s.chunks || []).map((c) => { const { lines } = capLines(c); return { lines: lines.length, widest: Math.max(...lines.map((l) => l.reduce((a, w) => a + w.ww, 0))) } })
   const capLinesMax = Math.max(1, ...caps.map((c) => c.lines))
-  return { id: s.id, type: s.type, t, body, head, capTop: captionsOn() ? L.capBase - (capLinesMax - 1) * L.capSize * 1.24 - L.capSize * 0.82 : null, capWidest: Math.max(0, ...caps.map((c) => c.widest)),
+  return { id: s.id, type: s.type, t, body, head, capTop: captionsOn() ? L.capBase - (capLinesMax - 1) * L.capSize * 1.24 - L.capSize * (ST.captions === 'outline' ? 0.82 : 0.93) : null, capWidest: Math.max(0, ...caps.map((c) => c.widest)),
     layout: { W, H, x0: L.x0, x1: L.x1, bodyTop: L.bodyTop, bodyBottom: L.bodyBottom, capMaxW: L.capMaxW, bleed: ST.shadow === 'hard' ? 12 : 0 } }
 }
 window.API = API

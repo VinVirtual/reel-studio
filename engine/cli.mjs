@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { ENGINE, SKILL, findPython, findPlaywright, browserCandidates, launchBrowser, installHint, CPUS } from './lib/env.mjs'
 import { projectDir, loadBrand, loadTimeline, listScripts, parseArgs, intFlag, withFormat } from './lib/project.mjs'
 import { listThemes, describeThemes, newProject } from './lib/themes.mjs'
+import { startPreview } from './lib/preview.mjs'
 import { renderStills, renderSheet, renderVideo, exportWeb, writeCaptions, defaultWorkers } from './lib/video.mjs'
 import { lintProject } from './lib/lint.mjs'
 import { formatIssues } from './lib/lintrules.mjs'
@@ -23,13 +24,14 @@ const HELP = `reel-studio: voiced motion-graphics videos from a script, made on 
   reel video <project> [script]            out/<script>.mp4 (+ -voiceonly.mp4, .vtt, .srt)   [--web]
   reel web <project> [script]              out/web/<script>.mp4 (small, faststart), .jpg poster, .vtt
   reel captions <project> [script]         out/<script>.vtt and .srt only
+  reel preview <project> [script]          play and scrub the video in a browser, drawn live (no rendering)   [--port 4173]
   reel build <project> [scripts...]        audio + video for many scripts   [--jobs N] [--web] [--force]
   reel test                                run the self-tests
 
 script defaults to "script" (<project>/script.json). build takes every script in the project when none is named.
 
 options
-  --format <f>         lint, sheet, stills, video, web, build: use vertical, square, landscape or embed for this run instead of
+  --format <f>         lint, sheet, stills, video, web, build, preview: use vertical, square, landscape or embed for this run instead of
                        the format in brand.json. Files are named <script>-<format>, so the shapes do not overwrite each other
   --no-captions        do not burn captions into the picture (the .vtt and .srt are still written)
   --workers N          browser pages drawing frames at once (default: up to 4, from the CPU count)
@@ -131,6 +133,14 @@ const COMMANDS = {
     const { P, name } = target(rest)
     const w = await exportWeb({ P, name, ...shaped(P, name, flags), timeline: loadTimeline(P, name), opts: pageOpts(flags), ...webOptions(flags), log: note })
     say(`${w.mp4}\n${w.jpg}\n${w.vtt}`)
+  },
+  async preview({ rest, flags }) {
+    const { P, name } = target(rest)
+    if (flags.format !== undefined) shaped(P, name, flags) // checks the value
+    loadTimeline(P, name) // fails early, with the hint to run `reel audio`, when there is no voice yet
+    const { url } = await startPreview({ P, name, format: flags.format, port: intFlag(flags, 'port', 4173, 1, 65535) })
+    say(`preview of "${name}": ${url}`)
+    say('Open it in a browser. It reloads when the script, brand.json or the voice changes. Press Ctrl+C to stop.')
   },
   async build({ rest, flags }) {
     if (!rest[0]) throw new Error('which project? Give the project folder.')
