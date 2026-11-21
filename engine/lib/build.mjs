@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto'
 import { readFileSync, existsSync, readdirSync, mkdirSync, writeFileSync, createWriteStream } from 'node:fs'
 import { join } from 'node:path'
 import { ENGINE, findPython } from './env.mjs'
-import { loadBrand, fontPath } from './project.mjs'
+import { loadBrand, fontPath, MONO_FONT } from './project.mjs'
 
 const hashOf = (parts) => { const h = createHash('sha1'); for (const p of parts) h.update(typeof p === 'string' ? p : p ?? ''); return h.digest('hex') }
 const fileOr = (path) => (existsSync(path) ? readFileSync(path) : '')
@@ -18,19 +18,24 @@ export function fingerprints(P, name, options = {}) {
   try {
     const brand = loadBrand(P), sc = JSON.parse(String(script))
     const images = [brand.logo, ...sc.scenes.flatMap((s) => [s.src, ...(s.images || [])])].filter(Boolean).map((f) => join(P, f))
-    assets = [...images, fontPath(P, brand.fonts?.display), fontPath(P, brand.fonts?.body)].filter(Boolean)
+    assets = [...images, fontPath(P, brand.fonts?.display), fontPath(P, brand.fonts?.body), fontPath(P, brand.fonts?.mono || MONO_FONT)].filter(Boolean)
   } catch {} // a broken script still gets a fingerprint; the build step reports the real error
   const audio = hashOf([script, brandText, fileOr(join(ENGINE, 'gen_audio.py'))])
-  const video = hashOf([audio, fileOr(join(P, 'custom.js')), ...assets.map(fileOr), ...engineFiles(), JSON.stringify({ captions: options.captions, lossless: options.lossless, quality: options.quality })])
+  const video = hashOf([audio, fileOr(join(P, 'custom.js')), ...assets.map(fileOr), ...engineFiles(), JSON.stringify({ captions: options.captions, lossless: options.lossless, quality: options.quality, format: options.format })])
   const web = hashOf([video, JSON.stringify({ size: options.webSize, crf: options.webCrf, dir: options.webDir, posterAt: options.posterAt })])
   return { audio, video, web }
 }
 
+/** The names a build uses for one script: the output file name and the keys of its video and web fingerprints.
+    With --format they carry the format, so builds of two shapes are tracked apart and share the voice. */
+export const buildKeys = (name, format) => (format ? { outName: `${name}-${format}`, video: `video@${format}`, web: `web@${format}` } : { outName: name, video: 'video', web: 'web' })
+
 /** which steps a script needs, given its saved fingerprints and the files on disk */
-export function planSteps(now, saved, have, { web = false, force = false } = {}) {
+export function planSteps(now, saved, have, { web = false, force = false, format } = {}) {
+  const K = buildKeys('', format)
   const audio = force || saved.audio !== now.audio || !have.audio
-  const video = audio || saved.video !== now.video || !have.video
-  return { audio, video, web: web && (video || saved.web !== now.web || !have.web) }
+  const video = audio || saved[K.video] !== now.video || !have.video
+  return { audio, video, web: web && (video || saved[K.web] !== now.web || !have.web) }
 }
 
 function run(cmd, args, logStream) {
@@ -47,14 +52,14 @@ function run(cmd, args, logStream) {
 async function buildOne(P, name, o) {
   const t0 = Date.now(), stampPath = join(P, 'build', `${name}.stamp.json`), webDir = o.webDir || join(P, 'out', 'web')
   let saved = {}; try { saved = JSON.parse(readFileSync(stampPath, 'utf8')) } catch {}
-  const now = fingerprints(P, name, o)
-  const have = { audio: existsSync(join(P, 'build', `${name}.timeline.json`)) && existsSync(join(P, 'build', name, 'mix.wav')), video: existsSync(join(P, 'out', `${name}.mp4`)),
-    web: existsSync(join(webDir, `${name}.mp4`)) && existsSync(join(webDir, `${name}.jpg`)) }
+  const now = fingerprints(P, name, o), K = buildKeys(name, o.format)
+  const have = { audio: existsSync(join(P, 'build', `${name}.timeline.json`)) && existsSync(join(P, 'build', name, 'mix.wav')), video: existsSync(join(P, 'out', `${K.outName}.mp4`)),
+    web: existsSync(join(webDir, `${K.outName}.mp4`)) && existsSync(join(webDir, `${K.outName}.jpg`)) }
   const plan = planSteps(now, saved, have, o)
   if (!plan.audio && !plan.video && !plan.web) return { name, status: 'skipped', seconds: 0 }
   mkdirSync(join(P, 'build'), { recursive: true })
-  const logPath = join(P, 'build', `${name}.build.log`), log = createWriteStream(logPath)
-  const cli = join(ENGINE, 'cli.mjs'), common = [P, name, ...(o.captions === false ? ['--no-captions'] : [])]
+  const logPath = join(P, 'build', `${K.outName}.build.log`), log = createWriteStream(logPath)
+  const cli = join(ENGINE, 'cli.mjs'), common = [P, name, ...(o.captions === false ? ['--no-captions'] : []), ...(o.format ? ['--format', o.format] : [])]
   const steps = [
     plan.audio && ['audio', findPython(), [join(ENGINE, 'gen_audio.py'), P, name]],
     plan.video && ['video', process.execPath, [cli, 'video', ...common, '--workers', String(o.workers), ...(o.lossless ? ['--lossless'] : []), ...(o.quality ? ['--quality', String(o.quality)] : [])]],
@@ -64,7 +69,7 @@ async function buildOne(P, name, o) {
   for (const [step, cmd, args] of steps) {
     const r = await run(cmd, args, log)
     if (!r.ok) { log.end(); writeFileSync(stampPath, JSON.stringify(done)); return { name, status: 'failed', step, seconds: (Date.now() - t0) / 1000, tail: r.tail.trim().split('\n').slice(-6).join('\n'), logPath } }
-    done[step] = now[step]
+    done[K[step] || step] = now[step]
   }
   log.end(); writeFileSync(stampPath, JSON.stringify(done))
   return { name, status: 'built', steps: steps.map((s) => s[0]), seconds: (Date.now() - t0) / 1000 }

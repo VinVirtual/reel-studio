@@ -37,6 +37,9 @@ export function fontPath(P, font) {
   return null
 }
 
+/** the font of code scenes when a brand names none */
+export const MONO_FONT = { family: 'JetBrains Mono', file: 'fonts/JetBrainsMono.ttf' }
+
 /** the object window.setup() takes in the page */
 export function setupArgs(P, brand, timeline, opts = {}, warn = () => {}) {
   const font = (f) => {
@@ -45,10 +48,22 @@ export function setupArgs(P, brand, timeline, opts = {}, warn = () => {}) {
     return { ...(f || {}), url: path ? pathToFileURL(path).href : undefined }
   }
   const custom = existsSync(join(P, 'custom.js')) ? pathToFileURL(join(P, 'custom.js')).href : null
-  return { timeline, brand, base: pathToFileURL(P + '/').href, fonts: { display: font(brand.fonts?.display), body: font(brand.fonts?.body) }, custom, opts }
+  return { timeline, brand, base: pathToFileURL(P + '/').href, fonts: { display: font(brand.fonts?.display), body: font(brand.fonts?.body), mono: font(brand.fonts?.mono || MONO_FONT) }, custom, opts }
 }
 
-const VALUE_FLAGS = new Set(['jobs', 'workers', 'quality', 'poster-at', 'web-size', 'web-crf', 'web-dir'])
+export const FORMATS = ['vertical', 'square', 'landscape', 'embed']
+
+/** The brand with its format replaced for one run (--format), and the suffix that keeps the outputs of that
+    run apart from the brand's own format: "" without an override, "-square" and so on with one.
+    A hand-set brand.layout belongs to the brand's own format, so it is dropped when the format changes. */
+export function withFormat(brand, format) {
+  if (format === undefined || format === null || format === false) return { brand, suffix: '', droppedLayout: false }
+  if (!FORMATS.includes(format)) throw new Error(`--format must be one of ${FORMATS.join(', ')}`)
+  const same = (brand.format || 'vertical') === format, { layout, ...rest } = brand
+  return { brand: same ? { ...brand, format } : { ...rest, format }, suffix: '-' + format, droppedLayout: !same && !!layout }
+}
+
+const VALUE_FLAGS = new Set(['jobs', 'workers', 'quality', 'poster-at', 'web-size', 'web-crf', 'web-dir', 'format', 'theme', 'port'])
 /** "--jobs 3 --web a b" -> { flags: { jobs: '3', web: true }, rest: ['a', 'b'] }. "--no-x" sets x to false. */
 export function parseArgs(argv) {
   const flags = {}, rest = []

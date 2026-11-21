@@ -19,25 +19,27 @@ export function ffmpeg(FF, args, input) {
 // BT.709 in limited range, tagged, so browsers and phones show the brand colours as drawn
 const COLOUR = ['-vf', 'scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+bicubic,format=yuv420p,setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv']
 
-export async function renderStills({ P, name, brand, timeline, opts, times, log }) {
+/* `outName` names the files written (it defaults to the script name). A run with --format passes
+   "<script>-<format>", so the same script in two shapes does not overwrite itself. */
+export async function renderStills({ P, name, outName = name, brand, timeline, opts, times, log }) {
   const dir = join(P, 'stills'); mkdirSync(dir, { recursive: true })
   const stage = await openStage({ P, brand, timeline, opts, log })
   try {
     const out = []
-    for (const t of times) { const f = join(dir, `${name}-t-${t.toFixed(2)}.png`); writeFileSync(f, await grab(stage.pages[0], t)); out.push(f) }
+    for (const t of times) { const f = join(dir, `${outName}-t-${t.toFixed(2)}.png`); writeFileSync(f, await grab(stage.pages[0], t)); out.push(f) }
     return out
   } finally { await stage.close() }
 }
 
 /** one frame per scene, taken when the scene is fully built, tiled into one PNG */
-export async function renderSheet({ P, name, brand, timeline, opts, log }) {
-  const FF = findFF(), dir = join(P, 'stills'), tmp = join(dir, `.sheet-${name}`)
+export async function renderSheet({ P, name, outName = name, brand, timeline, opts, log }) {
+  const FF = findFF(), dir = join(P, 'stills'), tmp = join(dir, `.sheet-${outName}`)
   rmSync(tmp, { recursive: true, force: true }); mkdirSync(tmp, { recursive: true })
   const stage = await openStage({ P, brand, timeline, opts, log })
   try {
     const times = timeline.scenes.map((s, i) => settledTime(s, i === timeline.scenes.length - 1))
     for (const [i, t] of times.entries()) writeFileSync(join(tmp, `f${String(i).padStart(3, '0')}.png`), await grab(stage.pages[0], t))
-    const wide = stage.size.W > stage.size.H, cols = Math.min(wide ? 3 : 5, times.length), rows = Math.ceil(times.length / cols), out = join(dir, `${name}-sheet.png`)
+    const wide = stage.size.W > stage.size.H, cols = Math.min(wide ? 3 : 5, times.length), rows = Math.ceil(times.length / cols), out = join(dir, `${outName}-sheet.png`)
     await ffmpeg(FF, ['-framerate', '1', '-i', join(tmp, 'f%03d.png'), '-vf', `scale=${wide ? 640 : 360}:-1,tile=${cols}x${rows}:padding=8:color=black`, '-frames:v', '1', out])
     return { out, legend: timeline.scenes.map((s, i) => `${i + 1}=${s.id}@${times[i].toFixed(1)}s`).join('  ') }
   } finally { await stage.close(); rmSync(tmp, { recursive: true, force: true }) }
@@ -55,11 +57,11 @@ export const defaultWorkers = (jobs = 1) => Math.max(1, Math.min(4, Math.floor(C
 
 /** Every frame drawn in `workers` pages at once (a frame depends only on t, so order does not matter),
     then written to ffmpeg in order. Frames travel as JPEG by default, or PNG with lossless: true. */
-export async function renderVideo({ P, name, brand, timeline, opts, workers = defaultWorkers(), lossless = false, quality = 0.95, log }) {
+export async function renderVideo({ P, name, outName = name, brand, timeline, opts, workers = defaultWorkers(), lossless = false, quality = 0.95, log }) {
   const FF = findFF(), dir = join(P, 'out'); mkdirSync(dir, { recursive: true })
   const mix = join(P, 'build', name, 'mix.wav'), voice = join(P, 'build', name, 'voice.wav')
   if (!existsSync(mix)) throw new Error(`no audio for "${name}" (${mix}). Make the voice first: reel audio ${P} ${name}`)
-  const out = join(dir, `${name}.mp4`), fps = timeline.fps || 30, n = Math.round(timeline.total * fps), type = lossless ? 'png' : 'jpeg'
+  const out = join(dir, `${outName}.mp4`), fps = timeline.fps || 30, n = Math.round(timeline.total * fps), type = lossless ? 'png' : 'jpeg'
   const stage = await openStage({ P, brand, timeline, opts, pages: Math.min(workers, n), log })
   const t0 = Date.now()
   try {
@@ -99,19 +101,19 @@ export const posterTime = (timeline, at) => (Number.isFinite(at) ? at : Number.i
 
 /** Web copy of a rendered video: a small faststart MP4, a poster JPEG drawn without captions, and the caption files.
     size is the length of the short side in pixels (720 gives 1280x720 or 720x1280). */
-export async function exportWeb({ P, name, brand, timeline, opts, size = 720, crf = 27, dir, posterAt, log }) {
-  const FF = findFF(), src = join(P, 'out', `${name}.mp4`)
-  if (!existsSync(src)) throw new Error(`no rendered video for "${name}" (${src}). Render it first: reel video ${P} ${name}`)
+export async function exportWeb({ P, name, outName = name, brand, timeline, opts, size = 720, crf = 27, dir, posterAt, log }) {
+  const FF = findFF(), src = join(P, 'out', `${outName}.mp4`)
+  if (!existsSync(src)) throw new Error(`no rendered video for "${outName}" (${src}). Render it first: reel video ${P} ${name}${outName === name ? '' : ' --format ' + brand.format}`)
   const outDir = dir || join(P, 'out', 'web'); mkdirSync(outDir, { recursive: true })
   const stage = await openStage({ P, brand, timeline, opts: { ...opts, captions: false }, log })
   let frame, wide
   try { wide = stage.size.W >= stage.size.H; frame = await grab(stage.pages[0], posterTime(timeline, posterAt)) } finally { await stage.close() }
   const scale = wide ? `scale=-2:${size}:flags=lanczos` : `scale=${size}:-2:flags=lanczos`
-  const mp4 = join(outDir, `${name}.mp4`), jpg = join(outDir, `${name}.jpg`)
+  const mp4 = join(outDir, `${outName}.mp4`), jpg = join(outDir, `${outName}.jpg`)
   await ffmpeg(FF, ['-i', src, '-vf', scale + ',setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv', '-c:v', 'libx264', '-preset', 'slow', '-crf', String(crf), '-pix_fmt', 'yuv420p',
     '-c:a', 'aac', '-b:a', '64k', '-ac', '1', '-movflags', '+faststart', mp4])
   await ffmpeg(FF, ['-f', 'image2pipe', '-c:v', 'png', '-i', '-', '-vf', scale, '-frames:v', '1', '-q:v', '4', '-update', '1', jpg], frame)
-  const caps = writeCaptions({ P, name, timeline }), vtt = join(outDir, `${name}.vtt`)
+  const caps = writeCaptions({ P, name, timeline }), vtt = join(outDir, `${outName}.vtt`)
   if (caps.vtt !== vtt) copyFileSync(caps.vtt, vtt)
   return { mp4, jpg, vtt }
 }

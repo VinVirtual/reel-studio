@@ -2,14 +2,14 @@
 import { existsSync } from 'node:fs'
 import { join, basename } from 'node:path'
 import { SKILL } from './env.mjs'
-import { loadBrand, loadScript } from './project.mjs'
+import { loadBrand, loadScript, withFormat } from './project.mjs'
 import { lintScript, lintGeometry } from './lintrules.mjs'
 import { estimateTimeline } from './timeline.mjs'
 import { openStage } from './stage.mjs'
 
 /** Lint one script. browser: false skips the layout checks. Returns the list of issues. */
-export async function lintProject({ P, name, browser = true, opts = {} }) {
-  const brand = loadBrand(P), script = loadScript(P, name)
+export async function lintProject({ P, name, browser = true, opts = {}, format }) {
+  const brand = withFormat(loadBrand(P), format).brand, script = loadScript(P, name)
   const issues = lintScript(script, brand, {
     exists: (rel) => existsSync(join(P, rel)),
     bundledFont: (file) => existsSync(join(SKILL, 'assets', 'fonts', basename(file))),

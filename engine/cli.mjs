@@ -4,7 +4,8 @@ import { spawnSync } from 'node:child_process'
 import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { ENGINE, SKILL, findPython, findPlaywright, browserCandidates, launchBrowser, installHint, CPUS } from './lib/env.mjs'
-import { projectDir, loadBrand, loadTimeline, listScripts, parseArgs, intFlag } from './lib/project.mjs'
+import { projectDir, loadBrand, loadTimeline, listScripts, parseArgs, intFlag, withFormat } from './lib/project.mjs'
+import { listThemes, describeThemes, newProject } from './lib/themes.mjs'
 import { renderStills, renderSheet, renderVideo, exportWeb, writeCaptions, defaultWorkers } from './lib/video.mjs'
 import { lintProject } from './lib/lint.mjs'
 import { formatIssues } from './lib/lintrules.mjs'
@@ -13,7 +14,8 @@ import { buildMany, summary } from './lib/build.mjs'
 const HELP = `reel-studio: voiced motion-graphics videos from a script, made on this machine.
 
   reel check                               check the machine (Python, Kokoro, ffmpeg, Playwright, browser)
-  reel new <dir>                           start a project (brand.json, script.json, custom.js, fonts/)
+  reel themes                              list the ready-made looks
+  reel new <dir>                           start a project (brand.json, script.json, custom.js, fonts/)   [--theme <name>] [--format <f>]
   reel lint <project> [script]             check a script before rendering   [--no-browser] [--strict] [--json]
   reel audio <project> [script]            voice, word timings, music and captions files
   reel sheet <project> [script]            one frame per scene in one PNG, to review the layout
@@ -27,6 +29,8 @@ const HELP = `reel-studio: voiced motion-graphics videos from a script, made on 
 script defaults to "script" (<project>/script.json). build takes every script in the project when none is named.
 
 options
+  --format <f>         lint, sheet, stills, video, web, build: use vertical, square, landscape or embed for this run instead of
+                       the format in brand.json. Files are named <script>-<format>, so the shapes do not overwrite each other
   --no-captions        do not burn captions into the picture (the .vtt and .srt are still written)
   --workers N          browser pages drawing frames at once (default: up to 4, from the CPU count)
   --lossless           send frames as PNG instead of JPEG (slower, pixel exact)
@@ -51,6 +55,13 @@ function target(rest) {
   return { P, name: named ? rest[1].replace(/\.json$/, '') : 'script', extra: rest.slice(named ? 2 : 1) }
 }
 const webOptions = (flags) => ({ size: intFlag(flags, 'web-size', 720, 120, 4320), crf: intFlag(flags, 'web-crf', 27, 0, 51), dir: flags['web-dir'], posterAt: num(flags, 'poster-at') })
+/** the brand for this run and the name its files get: --format swaps the shape and adds "-<format>" to the name */
+function shaped(P, name, flags) {
+  if (flags.format === true) throw new Error('--format needs a value: vertical, square, landscape or embed')
+  const f = withFormat(loadBrand(P), flags.format)
+  if (f.droppedLayout) note(`note: brand.json has a hand-set "layout" for its own format; it is not used with --format ${flags.format}`)
+  return { brand: f.brand, outName: name + f.suffix }
+}
 
 async function checkBrowser() {
   const { chromium, from } = findPlaywright(), cands = browserCandidates(chromium)
@@ -69,12 +80,24 @@ const COMMANDS = {
   help: async () => say(HELP),
   check: async () => process.exit(sh('bash', [join(SKILL, 'check_env.sh')])),
   'check-browser': checkBrowser,
-  new: async ({ rest }) => process.exit(sh('bash', [join(SKILL, 'new_project.sh'), ...rest])),
+  async themes() {
+    say(describeThemes(listThemes()))
+    say(`\nstart a project from one:  reel new <dir> --theme <name>     (the files are in ${join(SKILL, 'themes')})`)
+  },
+  async new({ rest, flags }) {
+    if (flags.theme === true) throw new Error('--theme needs a name. Run "reel themes" for the list.')
+    if (flags.format === true) throw new Error('--format needs a value: vertical, square, landscape or embed')
+    const r = newProject(rest[0], { theme: flags.theme, format: flags.format })
+    say(`project ready: ${r.dir}${r.theme ? `  (theme: ${r.theme})` : ''}`)
+    say(r.made.length ? `wrote ${r.made.join(', ')}` : 'every file was already there; nothing was changed')
+    say(`next: edit ${join(r.dir, 'brand.json')} and ${join(r.dir, 'script.json')}, then\n  ${join(SKILL, 'reel')} lint ${r.dir} && ${join(SKILL, 'reel')} audio ${r.dir} && ${join(SKILL, 'reel')} sheet ${r.dir}`)
+  },
   test: async () => process.exit(sh(process.execPath, ['--test', ...readdirSync(join(SKILL, 'tests')).filter((f) => f.endsWith('.test.mjs')).map((f) => join(SKILL, 'tests', f))])),
 
   async lint({ rest, flags }) {
     const { P, name } = target(rest)
-    const { issues, measured } = await lintProject({ P, name, browser: flags.browser !== false, opts: pageOpts(flags) })
+    if (flags.format !== undefined) shaped(P, name, flags) // checks the value
+    const { issues, measured } = await lintProject({ P, name, browser: flags.browser !== false, opts: pageOpts(flags), format: flags.format })
     if (flags.json) say(JSON.stringify(issues, null, 1))
     else { say(formatIssues(issues)); if (!measured && flags.browser !== false) say('layout was not measured: no scene could be drawn') }
     if (issues.some((i) => i.level === 'error') || (flags.strict && issues.length)) process.exit(1)
@@ -90,23 +113,23 @@ const COMMANDS = {
   async stills({ rest, flags }) {
     const { P, name, extra } = target(rest), times = extra.map(Number)
     if (!times.length || times.some((t) => !Number.isFinite(t))) throw new Error('stills needs one or more times in seconds, e.g. reel stills <project> script 1.5 4')
-    for (const f of await renderStills({ P, name, brand: loadBrand(P), timeline: loadTimeline(P, name), opts: pageOpts(flags), times, log: note })) say(f)
+    for (const f of await renderStills({ P, name, ...shaped(P, name, flags), timeline: loadTimeline(P, name), opts: pageOpts(flags), times, log: note })) say(f)
   },
   async sheet({ rest, flags }) {
     const { P, name } = target(rest)
-    const r = await renderSheet({ P, name, brand: loadBrand(P), timeline: loadTimeline(P, name), opts: pageOpts(flags), log: note })
+    const r = await renderSheet({ P, name, ...shaped(P, name, flags), timeline: loadTimeline(P, name), opts: pageOpts(flags), log: note })
     say(r.out); say('scenes: ' + r.legend)
   },
   async video({ rest, flags }) {
-    const { P, name } = target(rest), brand = loadBrand(P), timeline = loadTimeline(P, name), opts = pageOpts(flags)
-    const r = await renderVideo({ P, name, brand, timeline, opts, workers: intFlag(flags, 'workers', defaultWorkers(), 1, 16), lossless: !!flags.lossless, quality: num(flags, 'quality') ?? 0.95, log: note })
+    const { P, name } = target(rest), { brand, outName } = shaped(P, name, flags), timeline = loadTimeline(P, name), opts = pageOpts(flags)
+    const r = await renderVideo({ P, name, outName, brand, timeline, opts, workers: intFlag(flags, 'workers', defaultWorkers(), 1, 16), lossless: !!flags.lossless, quality: num(flags, 'quality') ?? 0.95, log: note })
     say(`${r.out} (${timeline.total}s of video, ${r.size.W}x${r.size.H}, ${r.seconds.toFixed(0)}s to render with ${r.workers} page(s))`)
     say(`${r.vtt}\n${r.srt}`)
-    if (flags.web) { const w = await exportWeb({ P, name, brand, timeline, opts, ...webOptions(flags), log: note }); say(`${w.mp4}\n${w.jpg}\n${w.vtt}`) }
+    if (flags.web) { const w = await exportWeb({ P, name, outName, brand, timeline, opts, ...webOptions(flags), log: note }); say(`${w.mp4}\n${w.jpg}\n${w.vtt}`) }
   },
   async web({ rest, flags }) {
     const { P, name } = target(rest)
-    const w = await exportWeb({ P, name, brand: loadBrand(P), timeline: loadTimeline(P, name), opts: pageOpts(flags), ...webOptions(flags), log: note })
+    const w = await exportWeb({ P, name, ...shaped(P, name, flags), timeline: loadTimeline(P, name), opts: pageOpts(flags), ...webOptions(flags), log: note })
     say(`${w.mp4}\n${w.jpg}\n${w.vtt}`)
   },
   async build({ rest, flags }) {
@@ -114,7 +137,8 @@ const COMMANDS = {
     const P = projectDir(rest[0]), all = listScripts(P), names = rest.length > 1 ? rest.slice(1).map((n) => n.replace(/\.json$/, '')) : all
     if (!names.length) throw new Error(`no scripts found in ${P}`)
     const jobs = intFlag(flags, 'jobs', 2, 1, 32)
-    const options = { jobs, web: !!flags.web, force: !!flags.force, captions: flags.captions, lossless: !!flags.lossless, quality: num(flags, 'quality'),
+    if (flags.format !== undefined) shaped(P, names[0], flags) // checks the value
+    const options = { jobs, format: flags.format, web: !!flags.web, force: !!flags.force, captions: flags.captions, lossless: !!flags.lossless, quality: num(flags, 'quality'),
       workers: intFlag(flags, 'workers', defaultWorkers(Math.min(jobs, names.length)), 1, 16), webSize: num(flags, 'web-size'), webCrf: num(flags, 'web-crf'), webDir: flags['web-dir'], posterAt: num(flags, 'poster-at') }
     say(`building ${names.length} script(s), ${Math.min(jobs, names.length)} at a time, ${options.workers} page(s) each (${CPUS} CPUs)`)
     const t0 = Date.now()
