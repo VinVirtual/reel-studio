@@ -1,0 +1,31 @@
+{
+ "theme": "paper",
+ "about": "Cream paper, ink text and thin rules. Calm, editorial, light.",
+ "name": "Your Brand",
+ "format": "vertical",
+ "wordmark": [{"text": "Your"}, {"text": "Brand", "color": "accent"}],
+ "logo": null,
+ "colors": {
+  "bg": "#F3EEE3", "panel": "#FBF8F1", "panel2": "#EAE3D3",
+  "text": "#1D1A16", "soft": "#5A5248", "mute": "#8A8072",
+  "accent": "#1E3FAE", "accent2": "#C2410C", "good": "#2F6B45",
+  "goodHi": "#24573A", "bad": "#A8201A", "badHi": "#8E1B16",
+  "capKey": "#F2B84B"
+ },
+ "fonts": {
+  "display": {"family": "Instrument Serif", "file": "fonts/InstrumentSerif-Regular.ttf", "style": "normal", "weight": 400},
+  "body": {"family": "Geist", "file": "fonts/Geist.ttf"}
+ },
+ "background": "paper",
+ "style": {
+  "corners": 0.2, "shadow": "none", "border": 2,
+  "borderColor": "text", "glow": false, "motion": "calm",
+  "transition": "fade", "captions": "box"
+ },
+ "captions": true,
+ "voice": "af_heart",
+ "speed": 1.08,
+ "lang": "en-us",
+ "pronounce": {"\\bJSON\\b": "jay-son", "\\bMP4\\b": "M P four"},
+ "music": {"on": true, "bpm": 84, "chords": "C-Am-F-G", "volume": 0.4}
+}

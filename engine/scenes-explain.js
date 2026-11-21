@@ -41,15 +41,18 @@ const toneColour = (name) => (name === 'fix' ? C.good : name === 'problem' ? C.b
 const mix = (a, b, k) => { const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)), x = p(a), y = p(b); return '#' + x.map((v, i) => Math.round(lerp(v, y[i], clamp(k))).toString(16).padStart(2, '0')).join('') }
 /** the box of one step or node: dim until lit (0..1), glowing while it is the current one (glow 0..1) */
 function flowBox(x, y, w, h, lit, glow, c, r = 26) {
+  const b = ST.border ? ST.border + 1 : 0
   ctx.save()
-  ctx.shadowColor = glow > 0.01 ? rgba(c, 0.55 * glow) : 'rgba(0,0,0,0.45)'; ctx.shadowBlur = glow > 0.01 ? 44 : 36; ctx.shadowOffsetY = glow > 0.01 ? 0 : 16
+  if (glow > 0.01 && ST.glow && ST.shadow !== 'hard') { ctx.shadowColor = rgba(c, 0.55 * glow); ctx.shadowBlur = 44 }
+  else dropShadow(x, y, w, h, r, { color: 'rgba(0,0,0,0.45)', blur: 36, dy: 16, hard: 8 })
   rr(x, y, w, h, r); ctx.fillStyle = mix(C.panel, C.panel2, lit); ctx.fill()
   ctx.restore()
-  rr(x + 1.5, y + 1.5, w - 3, h - 3, r - 1); ctx.lineWidth = 3; ctx.strokeStyle = lit > 0 ? rgba(c, lerp(0.22, 0.9, lit)) : rgba(C.text, 0.12); ctx.stroke()
+  if (!b) return
+  rr(x + b / 2, y + b / 2, w - b, h - b, r - 1); ctx.lineWidth = b; ctx.strokeStyle = lit > 0 ? rgba(c, lerp(0.22, 0.9, lit)) : ST.borderColor ? rgba(col(ST.borderColor), 0.35) : rgba(C.text, 0.12); ctx.stroke()
 }
 function numberBadge(cx, cy, r, n, lit, c) {
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = lit > 0 ? rgba(c, lerp(0.16, 1, lit)) : rgba(C.text, 0.08); ctx.fill()
-  text(String(n), cx, cy + 1, { size: r * 1.05, weight: 700, align: 'center', base: 'middle', color: mix(C.mute, C.bg, lit) })
+  text(String(n), cx, cy + 1, { size: r * 1.05, weight: 700, align: 'center', base: 'middle', color: mix(C.mute, C.onAccent, lit) })
 }
 
 Object.assign(TYPES, {
@@ -203,7 +206,7 @@ Object.assign(TYPES, {
         const cx = x + 30 + (i + 0.5) * colW, bhh = maxH * clamp((Number(b.value) || 0) / top) * grow[i], c = toneColour(b.tone)
         centred(b.label || '', cx, base + 38, colW - 14, { size: labelSize, weight: 600, color: mix(C.mute, C.text, lit[i]) })
         if (grow[i] <= 0) return
-        ctx.save(); ctx.shadowColor = rgba(c, 0.35); ctx.shadowBlur = 24; rr(cx - barW / 2, base - Math.max(bhh, 6), barW, Math.max(bhh, 6), [12, 12, 0, 0]); ctx.fillStyle = c; ctx.fill(); ctx.restore()
+        ctx.save(); glow(rgba(c, 0.35), 24); rr(cx - barW / 2, base - Math.max(bhh, 6), barW, Math.max(bhh, 6), [12, 12, 0, 0]); ctx.fillStyle = c; ctx.fill(); ctx.restore()
         ctx.save(); ctx.globalAlpha *= lit[i]; text(shown(b, i), cx, base - Math.max(bhh, 6) - 16, { size: 32, weight: 700, align: 'center' }); ctx.restore()
       })
       if (s.note) text(s.note, x + w / 2, y0 + h - 26, { size: 22, color: 'mute', align: 'center' })
@@ -221,7 +224,7 @@ Object.assign(TYPES, {
       lines.forEach((l, j) => text(l, x + 40, cy + (j - (lines.length - 1) / 2) * ls * 1.12 + 1, { size: ls, weight: 600, base: 'middle', color: mix(C.mute, C.text, lit[i]) }))
       rr(xb, cy - barH / 2, xe - xb, barH, barH / 2); ctx.fillStyle = rgba(C.text, 0.06); ctx.fill()
       if (grow[i] <= 0) return
-      ctx.save(); ctx.shadowColor = rgba(c, 0.4); ctx.shadowBlur = 22; rr(xb, cy - barH / 2, Math.max(len, barH * 0.6), barH, barH / 2); ctx.fillStyle = c; ctx.fill(); ctx.restore()
+      ctx.save(); glow(rgba(c, 0.4), 22); rr(xb, cy - barH / 2, Math.max(len, barH * 0.6), barH, barH / 2); ctx.fillStyle = c; ctx.fill(); ctx.restore()
       ctx.save(); ctx.globalAlpha *= lit[i]; text(shown(b, i), x + w - 40, cy + 1, { size: vs, weight: 700, base: 'middle', align: 'right' }); ctx.restore()
     })
     if (s.note) text(s.note, x + 40, y0 + h - 26, { size: 22, color: 'mute' })

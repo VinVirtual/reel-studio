@@ -1,0 +1,25 @@
+{
+ "theme": "ember",
+ "about": "Warm dark with a serif italic headline. The classic reel-studio look.",
+ "name": "Your Brand",
+ "format": "vertical",
+ "wordmark": [{"text": "Your"}, {"text": "Brand", "color": "accent"}],
+ "logo": null,
+ "colors": {
+  "bg": "#14110E", "panel": "#221D19", "panel2": "#2A231E",
+  "text": "#F5F0E8", "soft": "#B9AEA2", "mute": "#7D7268",
+  "accent": "#E8A678", "accent2": "#C8956C", "good": "#5A8F65",
+  "goodHi": "#9CC7A5", "bad": "#D2675B", "badHi": "#F0A79D"
+ },
+ "fonts": {
+  "display": {"family": "Fraunces", "file": "fonts/Fraunces-Italic.ttf", "style": "italic", "weight": 500},
+  "body": {"family": "Geist", "file": "fonts/Geist.ttf"}
+ },
+ "background": "glow-dots",
+ "captions": true,
+ "voice": "af_heart",
+ "speed": 1.08,
+ "lang": "en-us",
+ "pronounce": {"\\bJSON\\b": "jay-son", "\\bMP4\\b": "M P four"},
+ "music": {"on": true, "bpm": 100, "chords": "Am-F-C-G", "volume": 0.55}
+}

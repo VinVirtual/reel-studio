@@ -1,0 +1,28 @@
+{
+ "theme": "midnight",
+ "about": "Deep navy with drifting colour, a tight sans headline and a block that follows the spoken word.",
+ "name": "Your Brand",
+ "format": "vertical",
+ "wordmark": [{"text": "Your"}, {"text": "Brand", "color": "accent"}],
+ "logo": null,
+ "colors": {
+  "bg": "#070A14", "panel": "#10162A", "panel2": "#182040",
+  "text": "#EEF2FF", "soft": "#A7B0CC", "mute": "#6B7699",
+  "accent": "#7DD3FC", "accent2": "#A78BFA", "good": "#17936B",
+  "goodHi": "#6EE7B7", "bad": "#E5566D", "badHi": "#FDA4B4"
+ },
+ "fonts": {
+  "display": {"family": "Geist", "file": "fonts/Geist.ttf", "style": "normal", "weight": 700},
+  "body": {"family": "Geist", "file": "fonts/Geist.ttf"}
+ },
+ "background": "blobs",
+ "style": {
+  "corners": 0.7, "captions": "highlight", "transition": "slide"
+ },
+ "captions": true,
+ "voice": "af_heart",
+ "speed": 1.08,
+ "lang": "en-us",
+ "pronounce": {"\\bJSON\\b": "jay-son", "\\bMP4\\b": "M P four"},
+ "music": {"on": true, "bpm": 92, "chords": "Dm-Bb-F-C", "volume": 0.5}
+}

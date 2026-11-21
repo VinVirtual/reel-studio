@@ -1,6 +1,7 @@
 // Lint rules for a reel-studio script. Pure: file checks go through an `exists(path)` function that the
 // caller supplies, and geometry checks work on measurements taken in the real engine (window.lintScene).
 // Every rule returns issues shaped { level: 'error' | 'warn', scene, rule, message }.
+import { brandContrast } from './contrast.mjs'
 
 const COMMON = ['id', 'type', 'say', 'keys', 'tone', 'tag', 'title', 'titleSize', 'step', 'stamp', 'hold', 'sfx', 'voice', 'speed', 'images']
 export const SCENE_FIELDS = {
@@ -16,16 +17,24 @@ export const SCENE_FIELDS = {
   steps: ['items', 'direction', 'loop', 'loopAt'],
   diagram: ['nodes', 'edges', 'direction'],
   bars: ['bars', 'prefix', 'suffix', 'decimals', 'max', 'direction', 'note'],
+  code: ['lines', 'code', 'file', 'lang', 'variant', 'mode', 'highlight', 'numbers', 'prompt', 'size'],
+  timeline: ['items', 'direction'],
   custom: null, // any field: custom.js decides
 }
 export const SCRIPT_FIELDS = ['lead', 'pause', 'tail', 'scenes', 'voice', 'speed', 'music', 'fps', 'caption_words', 'captions', 'poster']
-export const BRAND_FIELDS = ['name', 'format', 'density', 'wordmark', 'logo', 'colors', 'fonts', 'background', 'captions', 'voice', 'speed', 'lang', 'pronounce', 'music', 'layout']
-export const FORMATS = ['vertical', 'square', 'landscape', 'embed']
+export const BRAND_FIELDS = ['name', 'theme', 'about', 'format', 'density', 'wordmark', 'logo', 'colors', 'fonts', 'background', 'style', 'captions', 'voice', 'speed', 'lang', 'pronounce', 'music', 'layout']
+export const FORMATS = ['vertical', 'square', 'landscape', 'embed'] // the same list as project.mjs (this file stays free of node imports)
+export const BACKGROUNDS = ['glow-dots', 'glow', 'plain', 'grid', 'paper', 'blobs', 'stripes']
+/** brand.style: what each key may be */
+export const STYLE_VALUES = { shadow: ['soft', 'faint', 'hard', 'none'], motion: ['smooth', 'calm', 'bouncy', 'snappy'], transition: ['rise', 'fade', 'slide', 'cut'],
+  captions: ['outline', 'box', 'highlight'], captionCase: ['none', 'upper'], captionFont: ['body', 'display'], titleCase: ['none', 'upper'] }
+/** guides for a code scene: more than this is hard to read in a short video */
+export const CODE_LIMITS = { lines: 12, chars: 56 }
 const ENUMS = { tone: ['problem', 'fix', 'neutral'], sfx: ['thud', 'chime', 'whoosh', 'none'] }
 /** most words allowed on screen, from the "Writing the script" rules in SKILL.md */
 export const WORD_LIMITS = { headline: 4, hook: 6, tag: 4, item: 5, chip: 3, label: 3, quote: 16 }
 /** scene types whose body must stay inside the body area */
-const BODY_TYPES = new Set(['bullets', 'chat', 'card', 'compare', 'quote', 'steps', 'diagram', 'bars', 'custom'])
+const BODY_TYPES = new Set(['bullets', 'chat', 'card', 'compare', 'quote', 'steps', 'diagram', 'bars', 'code', 'timeline', 'custom'])
 
 const norm = (w) => String(w).toLowerCase().replace(/[^\p{L}\p{N}']/gu, '')
 const words = (s) => String(s || '').split(/\s+/).filter(Boolean)
@@ -43,10 +52,10 @@ export function spokenMatch(say, at) {
 export function atWords(sc) {
   const out = [], add = (where, word) => { if (word !== undefined && word !== null && word !== '') out.push({ where, word }) }
   const list = (name, arr) => (Array.isArray(arr) ? arr : []).forEach((it, i) => { if (it && typeof it === 'object') add(`${name}[${i}].at`, it.at) })
-  list('items', sc.items); list('rows', sc.rows); list('chips', sc.chips); list('nodes', sc.nodes); list('edges', sc.edges); list('bars', sc.bars)
+  list('items', sc.items); list('rows', sc.rows); list('chips', sc.chips); list('nodes', sc.nodes); list('edges', sc.edges); list('bars', sc.bars); list('lines', sc.lines)
   list('left.items', sc.left && sc.left.items); list('right.items', sc.right && sc.right.items)
   for (const k of ['badgeAt', 'buttonAt', 'loopAt']) add(k, sc[k])
-  for (const k of ['stamp', 'status', 'count', 'typing']) if (sc[k] && typeof sc[k] === 'object') add(`${k}.at`, sc[k].at)
+  for (const k of ['stamp', 'status', 'count', 'typing', 'highlight']) if (sc[k] && typeof sc[k] === 'object' && !Array.isArray(sc[k])) add(`${k}.at`, sc[k].at)
   return out
 }
 
@@ -74,8 +83,17 @@ function checkLength(sc, id) {
   ;(Array.isArray(sc.bars) ? sc.bars : []).forEach((b, i) => over(`bars[${i}].label`, b.label, WORD_LIMITS.label))
   if (sc.type === 'quote') over('text', sc.text, WORD_LIMITS.quote)
   if (sc.type === 'stat' && sc.label) over('label', sc.label, WORD_LIMITS.item)
+  if (sc.type === 'timeline') (Array.isArray(sc.items) ? sc.items : []).forEach((it, i) => { if (it && it.date !== undefined) over(`items[${i}].date`, it.date, WORD_LIMITS.label) })
+  if (sc.type === 'code') {
+    const lines = codeText(sc), long = lines.filter((l) => l.length > CODE_LIMITS.chars)
+    if (lines.length > CODE_LIMITS.lines) out.push(issue('warn', id, 'length', `code has ${lines.length} lines (guide: ${CODE_LIMITS.lines} or fewer, so the text stays readable)`))
+    if (long.length) out.push(issue('warn', id, 'length', `code has ${long.length} line(s) over ${CODE_LIMITS.chars} characters (the whole block is drawn smaller to fit): "${long[0].slice(0, 40)}..."`))
+  }
   return out
 }
+
+/** the lines of a code scene as plain strings */
+const codeText = (sc) => (Array.isArray(sc.lines) ? sc.lines.map((l) => String((l && typeof l === 'object' ? l.text : l) ?? '')) : typeof sc.code === 'string' ? sc.code.replace(/\n$/, '').split('\n') : [])
 
 function checkShape(sc, id, types) {
   const out = []
@@ -96,6 +114,15 @@ function checkShape(sc, id, types) {
     ids.forEach((nid, i) => { if (!nid) out.push(issue('error', id, 'value', `nodes[${i}] has no "id"`)); else if (ids.indexOf(nid) !== i) out.push(issue('error', id, 'value', `nodes[${i}]: id "${nid}" is used twice`)) })
     ;(Array.isArray(sc.edges) ? sc.edges : []).forEach((e, i) => { for (const end of ['from', 'to']) if (!ids.includes(e[end])) out.push(issue('error', id, 'value', `edges[${i}].${end}: no node with id "${e[end]}"`)) })
   }
+  if (sc.type === 'timeline') { oneOf('direction', ['row', 'column']); if (!Array.isArray(sc.items) || !sc.items.length) out.push(issue('error', id, 'value', 'timeline needs "items"')) }
+  if (sc.type === 'code') {
+    oneOf('variant', ['editor', 'terminal']); oneOf('mode', ['type', 'lines'])
+    const n = codeText(sc).length
+    if (!n) out.push(issue('error', id, 'value', 'code needs "lines" (a list) or "code" (one string)'))
+    if (sc.lines !== undefined && sc.code !== undefined) out.push(issue('warn', id, 'value', 'code has both "lines" and "code": "lines" is used'))
+    const h = sc.highlight, wanted = h === undefined || h === null || h === false ? [] : [].concat(typeof h === 'object' && !Array.isArray(h) ? h.lines ?? h.line ?? [] : h)
+    for (const v of wanted) if (!Number.isInteger(v) || v < 1 || v > n) out.push(issue('error', id, 'value', `highlight: ${JSON.stringify(v)} is not a line number from 1 to ${n}`))
+  }
   if (sc.type === 'bars') {
     oneOf('direction', ['horizontal', 'vertical'])
     const bars = Array.isArray(sc.bars) ? sc.bars : []
@@ -111,6 +138,27 @@ function checkFiles(sc, id, exists) {
   return out
 }
 
+/** brand.style: unknown keys are warnings, bad values are errors */
+export function lintStyle(brand = {}) {
+  const out = [], st = brand.style
+  if (st === undefined) return out
+  if (!st || typeof st !== 'object' || Array.isArray(st)) return [issue('error', 'brand', 'value', 'style must be an object, for example {"corners": 0.5, "captions": "box"}')]
+  for (const [k, v] of Object.entries(st)) {
+    if (STYLE_VALUES[k]) { if (!STYLE_VALUES[k].includes(v)) out.push(issue('error', 'brand', 'value', `style.${k}: ${JSON.stringify(v)} is not one of ${STYLE_VALUES[k].join(', ')}`)) }
+    else if (k === 'corners') { if (!(typeof v === 'number' && v >= 0 && v <= 2)) out.push(issue('error', 'brand', 'value', `style.corners: ${JSON.stringify(v)} must be a number from 0 (square) to 2`)) }
+    else if (k === 'border') { if (!(typeof v === 'number' && v >= 0 && v <= 12)) out.push(issue('error', 'brand', 'value', `style.border: ${JSON.stringify(v)} must be a number from 0 to 12`)) }
+    else if (k === 'glow') { if (typeof v !== 'boolean') out.push(issue('error', 'brand', 'value', 'style.glow must be true or false')) }
+    else if (k !== 'borderColor') out.push(issue('warn', 'brand', 'field', `unknown style field "${k}" (it is ignored)`))
+  }
+  return out
+}
+
+/** Text colours that would be hard to read on the colours behind them (WCAG contrast). Warnings only. */
+export function lintContrast(brand = {}) {
+  return brandContrast(brand).filter((p) => p.ratio < p.min)
+    .map((p) => issue('warn', 'brand', 'contrast', `${p.what}: ${p.fg} on ${p.bg} has a contrast of ${p.ratio.toFixed(1)} (aim for ${p.min} or more)`))
+}
+
 /** Rules that need only the script and brand. opts: { exists(projectRelativePath), bundledFont(basename), types } */
 export function lintScript(script, brand = {}, opts = {}) {
   const exists = opts.exists || (() => true), bundledFont = opts.bundledFont || (() => false), types = opts.types || Object.keys(SCENE_FIELDS)
@@ -119,7 +167,8 @@ export function lintScript(script, brand = {}, opts = {}) {
   for (const k of Object.keys(script)) if (!SCRIPT_FIELDS.includes(k)) out.push(issue('warn', '-', 'field', `unknown script field "${k}" (it is ignored)`))
   for (const k of Object.keys(brand)) if (!BRAND_FIELDS.includes(k)) out.push(issue('warn', 'brand', 'field', `unknown brand field "${k}" (it is ignored)`))
   if (brand.format !== undefined && !FORMATS.includes(brand.format)) out.push(issue('error', 'brand', 'value', `format: "${brand.format}" is not one of ${FORMATS.join(', ')}`))
-  if (brand.background !== undefined && !['glow-dots', 'glow', 'plain'].includes(brand.background)) out.push(issue('error', 'brand', 'value', `background: "${brand.background}" is not one of glow-dots, glow, plain`))
+  if (brand.background !== undefined && !BACKGROUNDS.includes(brand.background)) out.push(issue('error', 'brand', 'value', `background: "${brand.background}" is not one of ${BACKGROUNDS.join(', ')}`))
+  out.push(...lintStyle(brand), ...lintContrast(brand))
   if (brand.density !== undefined && !(typeof brand.density === 'number' && brand.density >= 1 && brand.density <= 2)) out.push(issue('error', 'brand', 'value', `density: ${JSON.stringify(brand.density)} must be a number from 1 to 2`))
   if (brand.logo && !exists(brand.logo)) out.push(issue('error', 'brand', 'file', `logo not found: ${brand.logo}`))
   for (const role of ['display', 'body']) {
@@ -153,14 +202,15 @@ export function overlapShare(a, b) {
 /** Rules on one scene measured in the engine (the object window.lintScene returns). */
 export function lintGeometry(m, { tolerance = 6, overlap = 0.25 } = {}) {
   const out = [], id = m.id, Lay = m.layout, body = m.body || {}, head = m.head || {}
+  const bleed = Lay.bleed || 0 // a hard shadow sits to the right of and below its panel; that much is not an overflow
   if (body.error) out.push(issue('error', id, 'draw', `the scene failed to draw: ${body.error}`))
   if (head.error) out.push(issue('error', id, 'draw', `the header failed to draw: ${head.error}`))
   const ink = body.ink
   if (ink) {
     if (BODY_TYPES.has(m.type)) {
-      if (ink.y1 > Lay.bodyBottom + tolerance) out.push(issue('error', id, 'overflow', `content overflows the bottom of the body area by ${px(ink.y1 - Lay.bodyBottom)}: shorten or split the scene`))
+      if (ink.y1 > Lay.bodyBottom + tolerance + bleed) out.push(issue('error', id, 'overflow', `content overflows the bottom of the body area by ${px(ink.y1 - Lay.bodyBottom)}: shorten or split the scene`))
       if (ink.y0 < Lay.bodyTop - tolerance) out.push(issue('error', id, 'overflow', `content overflows the top of the body area by ${px(Lay.bodyTop - ink.y0)}`))
-      if (ink.x0 < Lay.x0 - tolerance || ink.x1 > Lay.x1 + tolerance) out.push(issue('warn', id, 'overflow', `content is wider than the content area by ${px(Math.max(Lay.x0 - ink.x0, ink.x1 - Lay.x1))}`))
+      if (ink.x0 < Lay.x0 - tolerance || ink.x1 > Lay.x1 + tolerance + bleed) out.push(issue('warn', id, 'overflow', `content is wider than the content area by ${px(Math.max(Lay.x0 - ink.x0, ink.x1 - Lay.x1))}`))
     }
     if (ink.x0 <= 0 || ink.y0 <= 0 || ink.x1 >= Lay.W || ink.y1 >= Lay.H) out.push(issue('warn', id, 'overflow', 'content reaches the edge of the frame and may be cut off'))
     if (m.capTop !== null && m.capTop !== undefined && ink.y1 > m.capTop + tolerance && !(BODY_TYPES.has(m.type) && ink.y1 > Lay.bodyBottom + tolerance)) out.push(issue('warn', id, 'overflow', `content reaches ${px(ink.y1 - m.capTop)} into the caption area`))

@@ -1,0 +1,33 @@
+{
+ "theme": "poster",
+ "about": "Loud yellow, black ink, square corners and hard shadows. Bold and high contrast.",
+ "name": "Your Brand",
+ "format": "vertical",
+ "wordmark": [{"text": "Your"}, {"text": "Brand", "color": "accent"}],
+ "logo": null,
+ "colors": {
+  "bg": "#FFD93B", "panel": "#FFFFFF", "panel2": "#FFF3B8",
+  "text": "#0B0B0B", "soft": "#3A3A3A", "mute": "#6B6B6B",
+  "accent": "#1D2BD6", "accent2": "#D6246E", "good": "#0B7A3B",
+  "goodHi": "#075C2B", "bad": "#D11F2E", "badHi": "#A30F1C",
+  "pattern": "#FFC400", "capBg": "#0B0B0B", "capText": "#FFD93B",
+  "capKey": "#FFFFFF"
+ },
+ "fonts": {
+  "display": {"family": "Anton", "file": "fonts/Anton-Regular.ttf", "style": "normal", "weight": 400},
+  "body": {"family": "Geist", "file": "fonts/Geist.ttf"}
+ },
+ "background": "stripes",
+ "style": {
+  "corners": 0, "shadow": "hard", "border": 5,
+  "borderColor": "text", "glow": false, "motion": "snappy",
+  "transition": "slide", "captions": "box", "captionCase": "upper",
+  "captionFont": "display", "titleCase": "upper"
+ },
+ "captions": true,
+ "voice": "af_heart",
+ "speed": 1.08,
+ "lang": "en-us",
+ "pronounce": {"\\bJSON\\b": "jay-son", "\\bMP4\\b": "M P four"},
+ "music": {"on": true, "bpm": 116, "chords": "Em-C-G-D", "volume": 0.55}
+}

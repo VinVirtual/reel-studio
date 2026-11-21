@@ -7,7 +7,7 @@ Object.assign(TYPES, {
     const cy = (L.bodyTop + L.bodyBottom) / 2 - 40
     if (s.kicker) { const k = outBack(prog(t, s.start, 0.45), 2); ctx.save(); ctx.translate(W / 2, cy - L.titleSize * 2.1); ctx.scale(k, k); const T = tone(s); pill(0, 0, s.kicker, { fill: T.fill, stroke: T.stroke, color: T.color, dot: T.dot }); ctx.restore() }
     const size = s.titleSize || L.titleSize * 1.25
-    const lines = wrapLines(s.title || '', L.x1 - L.x0, { display: true, size }), lh = size * 1.02
+    const lines = wrapLines(cased(s.title || ''), L.x1 - L.x0, { display: true, size }), lh = size * 1.02
     lines.forEach((l, i) => {
       const k = outBack(prog(t, s.start + 0.1 + i * 0.22, 0.5), 1.4)
       ctx.save(); ctx.globalAlpha *= clamp(k); ctx.translate(W / 2, cy + i * lh - (lines.length - 1) * lh / 2); ctx.scale(lerp(0.85, 1, k), lerp(0.85, 1, k))
@@ -105,7 +105,7 @@ Object.assign(TYPES, {
     if (s.button) {
       const tb = s.buttonAt ? wt(s, s.buttonAt) : s.start + s.voice * 0.7, k = outBack(prog(t, tb - 0.3, 0.4), 1.8)
       const press = 1 - 0.06 * Math.sin(Math.PI * prog(t, tb, 0.25))
-      if (k > 0) button(x + w / 2, y0 + h - 80, s.button, k * press, { fill: 'good', color: '#fff' })
+      if (k > 0) button(x + w / 2, y0 + h - 80, s.button, k * press, { fill: 'good', color: C.onGood })
     }
     if (s.status) { const st = s.status, T = TONES()[st.tone] || TONES().fix; stamp(t, st.at ? wt(s, st.at) : s.start + s.voice * 0.8, W / 2, y0 + h / 2, st.label, T.dot) }
   },
@@ -120,7 +120,7 @@ Object.assign(TYPES, {
     }
     const k = outBack(prog(t, s.start + 0.1, 0.5), 1.5), size = s.size || L.titleSize * 2.2
     ctx.save(); ctx.translate(W / 2, cy); ctx.scale(k, k)
-    ctx.shadowColor = rgba(C.accent, 0.4); ctx.shadowBlur = 40
+    glow(rgba(C.accent, 0.4), 40)
     text(v, 0, size * 0.33, { display: true, size, align: 'center', color: s.tone === 'problem' ? C.bad : C.accent }); ctx.restore()
     if (s.label) { const kl = outCubic(prog(t, s.start + 0.45, 0.4)); ctx.save(); ctx.globalAlpha *= kl; wrap(s.label, W / 2, cy + size * 0.55 + 40, L.x1 - L.x0, { size: 44, weight: 600, align: 'center' }); ctx.restore() }
     if (s.note) { const kn = outCubic(prog(t, s.start + 0.8, 0.4)); ctx.save(); ctx.globalAlpha *= kn; wrap(s.note, W / 2, cy + size * 0.55 + 120, L.x1 - L.x0, { size: 30, align: 'center', color: 'soft' }); ctx.restore() }
@@ -179,7 +179,7 @@ Object.assign(TYPES, {
     const x = W / 2 - w / 2, y = (s.tag || s.title ? L.bodyTop : L.bodyTop - 140) + (avail + (s.tag || s.title ? 0 : 140) - h) / 2
     const k = outCubic(prog(t, s.start, 0.5))
     ctx.save(); ctx.translate(0, (1 - k) * 60)
-    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 60; ctx.shadowOffsetY = 30; rr(x, y, w, h, 36); ctx.fillStyle = C.panel; ctx.fill(); ctx.shadowBlur = 0
+    dropShadow(x, y, w, h, 36, { blur: 60, dy: 30 }); rr(x, y, w, h, 36); ctx.fillStyle = C.panel; ctx.fill(); ctx.shadowBlur = 0
     drawImage(s.src, x, y, w, h, 36, 1 + 0.06 * prog(t, s.start, s.end - s.start))
     ctx.restore()
   },
@@ -188,7 +188,7 @@ Object.assign(TYPES, {
   cta(t, s) {
     const cy = (L.bodyTop + L.bodyBottom) / 2
     brandMark(W / 2, cy - 230, 110, outCubic(prog(t, s.start, 0.5)))
-    if (s.title) { const k = outCubic(prog(t, s.start + 0.2, 0.4)); ctx.save(); ctx.globalAlpha *= k; wrap(s.title, W / 2, cy - 90, L.x1 - L.x0, { display: true, size: 58, align: 'center' }); ctx.restore() }
+    if (s.title) { const k = outCubic(prog(t, s.start + 0.2, 0.4)); ctx.save(); ctx.globalAlpha *= k; wrap(cased(s.title), W / 2, cy - 90, L.x1 - L.x0, { display: true, size: 58, align: 'center' }); ctx.restore() }
     if (s.comment) {
       const k = outCubic(prog(t, s.start + 0.4, 0.4)), w = L.x1 - L.x0 - 80, y = cy - 20
       ctx.save(); ctx.globalAlpha *= k; rr(W / 2 - w / 2, y, w, 96, 48); ctx.fillStyle = C.panel2; ctx.fill(); ctx.strokeStyle = rgba(C.accent, 0.3); ctx.lineWidth = 2; ctx.stroke()
