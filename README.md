@@ -1,5 +1,7 @@
 # reel-studio
 
+[![test](https://github.com/VinVirtual/reel-studio/actions/workflows/test.yml/badge.svg)](https://github.com/VinVirtual/reel-studio/actions/workflows/test.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Short voiced motion-graphics videos made from a text script, entirely on your own machine.
 
 You write two small JSON files: a **script** (a list of scenes, each with a line to say and what to show) and a **brand** (colours, fonts, voice). reel-studio speaks the lines with a local text-to-speech model, draws every frame in a headless browser, and encodes an MP4 with word-by-word captions, music and sound effects. Nothing is uploaded and no paid service is used.
