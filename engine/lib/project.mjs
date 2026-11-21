@@ -63,6 +63,14 @@ export function withFormat(brand, format) {
   return { brand: same ? { ...brand, format } : { ...rest, format }, suffix: '-' + format, droppedLayout: !same && !!layout }
 }
 
+/** With --format, the outputs of script `name` are named "<name>-<format>". When the project also has a script
+    called exactly that, the two would write the same files, so this throws and says how to avoid it. */
+export function checkFormatClash(P, name, format) {
+  if (!format) return
+  const other = `${name}-${format}`
+  if (existsSync(join(P, `${other}.json`))) throw new Error(`--format ${format} would name the files of "${name}" "${other}", which is also the name of a script in this project (${other}.json), so one would overwrite the other. Rename that script, or set "format" in brand.json instead.`)
+}
+
 const VALUE_FLAGS = new Set(['jobs', 'workers', 'quality', 'poster-at', 'web-size', 'web-crf', 'web-dir', 'format', 'theme', 'port'])
 /** "--jobs 3 --web a b" -> { flags: { jobs: '3', web: true }, rest: ['a', 'b'] }. "--no-x" sets x to false. */
 export function parseArgs(argv) {

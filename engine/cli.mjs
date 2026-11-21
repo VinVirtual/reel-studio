@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process'
 import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { ENGINE, SKILL, findPython, findPlaywright, browserCandidates, launchBrowser, installHint, CPUS } from './lib/env.mjs'
-import { projectDir, loadBrand, loadTimeline, listScripts, parseArgs, intFlag, withFormat } from './lib/project.mjs'
+import { projectDir, loadBrand, loadTimeline, listScripts, parseArgs, intFlag, withFormat, checkFormatClash } from './lib/project.mjs'
 import { listThemes, describeThemes, newProject } from './lib/themes.mjs'
 import { startPreview } from './lib/preview.mjs'
 import { renderStills, renderSheet, renderVideo, exportWeb, writeCaptions, defaultWorkers } from './lib/video.mjs'
@@ -61,6 +61,7 @@ const webOptions = (flags) => ({ size: intFlag(flags, 'web-size', 720, 120, 4320
 function shaped(P, name, flags) {
   if (flags.format === true) throw new Error('--format needs a value: vertical, square, landscape or embed')
   const f = withFormat(loadBrand(P), flags.format)
+  checkFormatClash(P, name, flags.format)
   if (f.droppedLayout) note(`note: brand.json has a hand-set "layout" for its own format; it is not used with --format ${flags.format}`)
   return { brand: f.brand, outName: name + f.suffix }
 }
@@ -147,7 +148,7 @@ const COMMANDS = {
     const P = projectDir(rest[0]), all = listScripts(P), names = rest.length > 1 ? rest.slice(1).map((n) => n.replace(/\.json$/, '')) : all
     if (!names.length) throw new Error(`no scripts found in ${P}`)
     const jobs = intFlag(flags, 'jobs', 2, 1, 32)
-    if (flags.format !== undefined) shaped(P, names[0], flags) // checks the value
+    if (flags.format !== undefined) for (const n of names) shaped(P, n, flags) // checks the value, and that no output name clashes
     const options = { jobs, format: flags.format, web: !!flags.web, force: !!flags.force, captions: flags.captions, lossless: !!flags.lossless, quality: num(flags, 'quality'),
       workers: intFlag(flags, 'workers', defaultWorkers(Math.min(jobs, names.length)), 1, 16), webSize: num(flags, 'web-size'), webCrf: num(flags, 'web-crf'), webDir: flags['web-dir'], posterAt: num(flags, 'poster-at') }
     say(`building ${names.length} script(s), ${Math.min(jobs, names.length)} at a time, ${options.workers} page(s) each (${CPUS} CPUs)`)

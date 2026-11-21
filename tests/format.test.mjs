@@ -1,7 +1,10 @@
 // --format: one script rendered in another shape without editing brand.json.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { withFormat, parseArgs, FORMATS } from '../engine/lib/project.mjs'
+import { withFormat, parseArgs, FORMATS, checkFormatClash } from '../engine/lib/project.mjs'
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { FORMATS as LINT_FORMATS } from '../engine/lib/lintrules.mjs'
 import { buildKeys, planSteps } from '../engine/lib/build.mjs'
 
@@ -47,4 +50,15 @@ test('a build with --format tracks its video and web copy apart from the default
   assert.deepEqual(planSteps(now, saved, have, { web: true, format: 'square' }), { audio: false, video: true, web: true })
   const done = { ...saved, 'video@square': 'v', 'web@square': 'w' }
   assert.deepEqual(planSteps(now, done, { audio: true, video: true, web: true }, { web: true, format: 'square' }), { audio: false, video: false, web: false })
+})
+
+test('--format refuses a run whose files would share a name with another script', () => {
+  const P = mkdtempSync(join(tmpdir(), 'reel-format-'))
+  try {
+    writeFileSync(join(P, 'promo.json'), '{}'); writeFileSync(join(P, 'promo-square.json'), '{}')
+    assert.throws(() => checkFormatClash(P, 'promo', 'square'), /also the name of a script.*promo-square\.json/)
+    assert.doesNotThrow(() => checkFormatClash(P, 'promo', 'vertical'))
+    assert.doesNotThrow(() => checkFormatClash(P, 'promo-square', 'square'))
+    assert.doesNotThrow(() => checkFormatClash(P, 'promo', undefined))
+  } finally { rmSync(P, { recursive: true, force: true }) }
 })

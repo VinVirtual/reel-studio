@@ -101,6 +101,7 @@ test('new without a theme copies the template, and keeps files that are already 
   assert.deepEqual(newProject(dir).made, [])
   assert.equal(readFileSync(join(dir, 'script.json'), 'utf8'), '{"scenes": []}')
   assert.throws(() => newProject(dir, { theme: 'paper' }), /already exists/)
+  assert.throws(() => newProject(dir, { format: 'square' }), /already exists, so --format was not applied/)
   assert.throws(() => newProject(join(tmp, 'q'), { format: 'wide' }), /--format must be one of/)
   assert.throws(() => newProject(), /which folder/)
 }))

@@ -54,6 +54,7 @@ export function newProject(dir, { theme, format } = {}) {
     else copyFileSync(join(templates, 'brand.json'), brandPath)
     made.push('brand.json')
   } else if (theme) throw new Error(`${brandPath} already exists, so the theme was not applied. Remove it first, or copy ${join(THEMES_DIR, theme + '.json')} over it.`)
+  else if (format) throw new Error(`${brandPath} already exists, so --format was not applied. Set "format" in it, or use --format on the render commands for one run.`)
   for (const f of ['script.json', 'custom.js']) if (!existsSync(join(dir, f))) { copyFileSync(join(templates, f), join(dir, f)); made.push(f) }
   const brand = readJson(brandPath, 'brand.json'), fonts = [brand.fonts?.display, brand.fonts?.body, brand.fonts?.mono || MONO_FONT].filter((f) => f && f.file).map((f) => basename(f.file))
   for (const f of new Set([...fonts, 'OFL.txt'])) {

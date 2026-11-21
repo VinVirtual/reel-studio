@@ -117,8 +117,9 @@ function checkShape(sc, id, types) {
   if (sc.type === 'timeline') { oneOf('direction', ['row', 'column']); if (!Array.isArray(sc.items) || !sc.items.length) out.push(issue('error', id, 'value', 'timeline needs "items"')) }
   if (sc.type === 'code') {
     oneOf('variant', ['editor', 'terminal']); oneOf('mode', ['type', 'lines'])
-    const n = codeText(sc).length
+    const text = codeText(sc), n = text.length
     if (!n) out.push(issue('error', id, 'value', 'code needs "lines" (a list) or "code" (one string)'))
+    else if (text.every((l) => !l.trim())) out.push(issue('error', id, 'value', 'code has no text: every line is empty, so the panel would be blank'))
     if (sc.lines !== undefined && sc.code !== undefined) out.push(issue('warn', id, 'value', 'code has both "lines" and "code": "lines" is used'))
     const h = sc.highlight, wanted = h === undefined || h === null || h === false ? [] : [].concat(typeof h === 'object' && !Array.isArray(h) ? h.lines ?? h.line ?? [] : h)
     for (const v of wanted) if (!Number.isInteger(v) || v < 1 || v > n) out.push(issue('error', id, 'value', `highlight: ${JSON.stringify(v)} is not a line number from 1 to ${n}`))

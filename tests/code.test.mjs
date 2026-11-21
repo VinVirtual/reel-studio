@@ -83,6 +83,10 @@ test('lint knows the code and timeline types and their fields', () => {
 
 test('lint: a code scene needs lines, valid values and a highlight inside the block', () => {
   assert.deepEqual(rules(lint({ type: 'code' })), ['error:value'])
+  for (const empty of [{ code: '' }, { code: '\n  \n' }, { lines: [''] }, { lines: ['  ', { text: '' }] }]) {
+    const out = lint({ type: 'code', ...empty })
+    assert.deepEqual(rules(out), ['error:value'], JSON.stringify(empty)); assert.match(out[0].message, /no text|needs "lines"/)
+  }
   assert.deepEqual(rules(lint({ type: 'code', lines: ['a'], variant: 'ide', mode: 'fast' })), ['error:value', 'error:value'])
   const out = lint({ type: 'code', lines: ['a', 'b'], highlight: [2, 3] })
   assert.deepEqual(rules(out), ['error:value']); assert.match(out[0].message, /highlight: 3 is not a line number from 1 to 2/)
