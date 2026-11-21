@@ -1,0 +1,154 @@
+{
+ "lead": 0.3,
+ "pause": 0.4,
+ "tail": 2.4,
+ "scenes": [
+  {
+   "id": "hook",
+   "type": "title",
+   "kicker": "A DATA STORY · EXAMPLE DATA",
+   "title": "Where did\nthe week go?",
+   "say": "Where did the week actually go? Let's chart it.",
+   "keys": [
+    "week",
+    "chart"
+   ]
+  },
+  {
+   "id": "hours",
+   "type": "bars",
+   "tone": "problem",
+   "tag": "EXAMPLE DATA",
+   "title": "Hours by task",
+   "suffix": " h",
+   "bars": [
+    {
+     "label": "Meetings",
+     "value": 14,
+     "at": "meetings",
+     "tone": "problem"
+    },
+    {
+     "label": "Messages",
+     "value": 9,
+     "at": "messages"
+    },
+    {
+     "label": "Admin",
+     "value": 5,
+     "at": "admin"
+    },
+    {
+     "label": "Focused work",
+     "value": 7,
+     "at": "focused",
+     "tone": "fix"
+    }
+   ],
+   "note": "Made-up numbers for this demo",
+   "say": "Meetings took the most. Then messages, then admin. Focused work got what was left.",
+   "keys": [
+    "Meetings",
+    "left."
+   ]
+  },
+  {
+   "id": "left",
+   "type": "stat",
+   "tone": "problem",
+   "tag": "EXAMPLE DATA",
+   "title": "What was left",
+   "count": {
+    "from": 35,
+    "to": 7,
+    "suffix": " h",
+    "at": "seven",
+    "dur": 1.0
+   },
+   "label": "of focused work",
+   "note": "out of a made-up 35-hour week",
+   "say": "Just seven hours of focused work in the whole week.",
+   "keys": [
+    "seven"
+   ]
+  },
+  {
+   "id": "plan",
+   "type": "timeline",
+   "tag": "THE EXPERIMENT",
+   "title": "One change a week",
+   "items": [
+    {
+     "date": "Week 1",
+     "text": "No-meeting mornings",
+     "at": "mornings"
+    },
+    {
+     "date": "Week 2",
+     "text": "Messages twice a day",
+     "at": "twice"
+    },
+    {
+     "date": "Week 3",
+     "text": "Admin on Fridays",
+     "at": "Fridays"
+    }
+   ],
+   "say": "So, one change a week. Mornings without meetings. Messages twice a day. Admin on Fridays.",
+   "keys": [
+    "change"
+   ]
+  },
+  {
+   "id": "result",
+   "type": "bars",
+   "tone": "fix",
+   "direction": "vertical",
+   "tag": "EXAMPLE DATA",
+   "title": "Focused hours",
+   "suffix": " h",
+   "bars": [
+    {
+     "label": "Before",
+     "value": 7,
+     "at": "seven",
+     "tone": "mute"
+    },
+    {
+     "label": "Week 1",
+     "value": 10,
+     "at": "ten"
+    },
+    {
+     "label": "Week 2",
+     "value": 13,
+     "at": "thirteen"
+    },
+    {
+     "label": "Week 3",
+     "value": 16,
+     "at": "sixteen",
+     "tone": "fix"
+    }
+   ],
+   "note": "Made-up numbers for this demo",
+   "say": "From seven hours to ten, then thirteen, then sixteen.",
+   "keys": [
+    "sixteen."
+   ],
+   "hold": 1.3
+  },
+  {
+   "id": "cta",
+   "type": "cta",
+   "title": "Chart your own week",
+   "button": "Try the template",
+   "url": "chartroom.example",
+   "say": "The numbers are invented. The method is not. Chart your own week.",
+   "keys": [
+    "invented.",
+    "week."
+   ]
+  }
+ ]
+}

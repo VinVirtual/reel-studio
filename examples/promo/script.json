@@ -1,0 +1,157 @@
+{
+ "lead": 0.3,
+ "pause": 0.4,
+ "tail": 2.4,
+ "scenes": [
+  {
+   "id": "hook",
+   "type": "title",
+   "kicker": "DEMO · AN INVENTED APP",
+   "title": "Do your plants\nkeep dying?",
+   "chips": [
+    "Too much water",
+    "Too little",
+    "No idea"
+   ],
+   "say": "Do your plants keep dying, and you never know why?",
+   "keys": [
+    "dying,"
+   ]
+  },
+  {
+   "id": "ghost",
+   "type": "chat",
+   "tone": "problem",
+   "step": 1,
+   "tag": "THE PROBLEM",
+   "title": "They can't ask",
+   "contact": "Your fern",
+   "avatar": "F",
+   "presence": "example chat",
+   "items": [
+    {
+     "from": "them",
+     "text": "Hello? A little water?",
+     "at": "plant"
+    },
+    {
+     "from": "them",
+     "text": "It has been two weeks.",
+     "at": "thirsty"
+    },
+    {
+     "from": "me",
+     "text": "Oh no. Sorry!",
+     "at": "forget",
+     "status": "Sent too late"
+    }
+   ],
+   "say": "A plant can't text you when it is thirsty. So you forget, and then it is too late.",
+   "keys": [
+    "forget,",
+    "late."
+   ]
+  },
+  {
+   "id": "card",
+   "type": "card",
+   "tone": "fix",
+   "step": 1,
+   "tag": "THE FIX",
+   "title": "Leafwink remembers",
+   "avatar": "F",
+   "name": "Fern",
+   "meta": "Example plant",
+   "badge": "EXAMPLE",
+   "rows": [
+    {
+     "label": "Water",
+     "value": "Every 6 days",
+     "at": "water"
+    },
+    {
+     "label": "Light",
+     "value": "Bright, no direct sun",
+     "at": "light"
+    },
+    {
+     "label": "Next drink",
+     "value": "Tomorrow",
+     "at": "next"
+    }
+   ],
+   "button": "Watered",
+   "buttonAt": "tap",
+   "say": "Leafwink keeps a card for every plant: how much water, how much light, and when the next drink is due. Then you just tap.",
+   "keys": [
+    "Leafwink",
+    "tap."
+   ]
+  },
+  {
+   "id": "how",
+   "type": "steps",
+   "tone": "fix",
+   "step": 2,
+   "tag": "HOW IT WORKS",
+   "title": "Three small steps",
+   "items": [
+    {
+     "text": "Add your plant",
+     "at": "add"
+    },
+    {
+     "text": "Get a nudge",
+     "at": "nudge"
+    },
+    {
+     "text": "Tap watered",
+     "at": "tap"
+    }
+   ],
+   "say": "You add a plant, you get a nudge on the right day, and you tap when it is done.",
+   "keys": [
+    "nudge"
+   ]
+  },
+  {
+   "id": "diff",
+   "type": "compare",
+   "step": 3,
+   "tag": "BEFORE AND AFTER",
+   "title": "Guessing or knowing",
+   "left": {
+    "label": "Guessing",
+    "items": [
+     "Forgotten for weeks",
+     "Drowned on Sunday",
+     "Crispy by Friday"
+    ]
+   },
+   "right": {
+    "label": "With Leafwink",
+    "items": [
+     "One nudge",
+     "The right amount",
+     "Still green"
+    ]
+   },
+   "say": "No more guessing. One nudge, the right amount, and a plant that is still green.",
+   "keys": [
+    "guessing.",
+    "green."
+   ]
+  },
+  {
+   "id": "cta",
+   "type": "cta",
+   "title": "Keep them alive",
+   "button": "Get Leafwink",
+   "url": "leafwink.example",
+   "say": "Leafwink. Keep them alive.",
+   "keys": [
+    "alive."
+   ]
+  }
+ ]
+}

@@ -3,3 +3,6 @@ node_modules/
 __pycache__/
 *.pyc
 .DS_Store
+examples/*/build/
+examples/*/out/
+examples/*/stills/

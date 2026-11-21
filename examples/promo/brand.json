@@ -1,0 +1,63 @@
+{
+ "theme": "pastel",
+ "name": "Leafwink",
+ "format": "vertical",
+ "wordmark": [
+  {
+   "text": "Leaf"
+  },
+  {
+   "text": "wink",
+   "color": "accent"
+  }
+ ],
+ "logo": null,
+ "colors": {
+  "bg": "#F7F1FB",
+  "panel": "#FFFFFF",
+  "panel2": "#F1E9FA",
+  "text": "#2B2140",
+  "soft": "#5E5378",
+  "mute": "#8E84A6",
+  "accent": "#6D3FD1",
+  "accent2": "#D9408C",
+  "good": "#17896A",
+  "goodHi": "#14735A",
+  "bad": "#D94A47",
+  "badHi": "#B3312F",
+  "shadow": "#6D3FD1"
+ },
+ "fonts": {
+  "display": {
+   "family": "Fredoka",
+   "file": "fonts/Fredoka.ttf",
+   "style": "normal",
+   "weight": 600
+  },
+  "body": {
+   "family": "Geist",
+   "file": "fonts/Geist.ttf"
+  }
+ },
+ "background": "blobs",
+ "style": {
+  "corners": 1.5,
+  "shadow": "faint",
+  "glow": false,
+  "motion": "bouncy",
+  "captions": "highlight"
+ },
+ "captions": true,
+ "voice": "af_bella",
+ "speed": 1.05,
+ "lang": "en-us",
+ "pronounce": {
+  "\\bLeafwink\\b": "Leaf wink"
+ },
+ "music": {
+  "on": true,
+  "bpm": 104,
+  "chords": "F-C-Dm-Bb",
+  "volume": 0.45
+ }
+}

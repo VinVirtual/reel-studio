@@ -1,0 +1,174 @@
+{
+ "lead": 0.3,
+ "pause": 0.4,
+ "tail": 2.4,
+ "scenes": [
+  {
+   "id": "hook",
+   "type": "title",
+   "kicker": "EXPLAINER",
+   "title": "How a name\nbecomes an address",
+   "say": "You type a name. Your computer needs a number. How does one become the other?",
+   "keys": [
+    "name.",
+    "number."
+   ]
+  },
+  {
+   "id": "pair",
+   "type": "compare",
+   "variant": "neutral",
+   "tag": "TWO KINDS OF ADDRESS",
+   "title": "Names and numbers",
+   "left": {
+    "label": "For people",
+    "items": [
+     "example.com",
+     "Easy to remember"
+    ]
+   },
+   "right": {
+    "label": "For machines",
+    "items": [
+     "192.0.2.1",
+     "Easy to route"
+    ]
+   },
+   "say": "People remember names. Machines route by numbers. Something has to translate.",
+   "keys": [
+    "names.",
+    "numbers."
+   ]
+  },
+  {
+   "id": "chain",
+   "type": "diagram",
+   "tag": "THE LOOKUP",
+   "title": "Who gets asked",
+   "nodes": [
+    {
+     "id": "you",
+     "label": "Your computer",
+     "at": "computer"
+    },
+    {
+     "id": "res",
+     "label": "Resolver",
+     "at": "resolver"
+    },
+    {
+     "id": "root",
+     "label": "Root server",
+     "sub": "knows .com",
+     "at": "root"
+    },
+    {
+     "id": "tld",
+     "label": ".com servers",
+     "sub": "know example.com",
+     "at": "com"
+    },
+    {
+     "id": "ns",
+     "label": "Name server",
+     "sub": "has the address",
+     "tone": "fix",
+     "at": "name"
+    }
+   ],
+   "edges": [
+    {
+     "from": "you",
+     "to": "res"
+    },
+    {
+     "from": "res",
+     "to": "root"
+    },
+    {
+     "from": "res",
+     "to": "tld"
+    },
+    {
+     "from": "res",
+     "to": "ns"
+    }
+   ],
+   "say": "Your computer asks a resolver. The resolver asks a root server, then the dot com servers, then the name server that holds the answer.",
+   "keys": [
+    "resolver.",
+    "answer."
+   ]
+  },
+  {
+   "id": "order",
+   "type": "steps",
+   "tag": "IN ORDER",
+   "title": "Narrowing it down",
+   "items": [
+    {
+     "text": "Root",
+     "note": "who runs .com?",
+     "at": "root"
+    },
+    {
+     "text": ".com",
+     "note": "who runs example.com?",
+     "at": "com"
+    },
+    {
+     "text": "Name server",
+     "note": "what is the address?",
+     "at": "name"
+    },
+    {
+     "text": "Answer",
+     "note": "192.0.2.1",
+     "at": "answer"
+    }
+   ],
+   "say": "The root points to dot com. Dot com points to the name server. The name server gives the answer.",
+   "keys": [
+    "answer."
+   ]
+  },
+  {
+   "id": "cache",
+   "type": "bullets",
+   "tone": "fix",
+   "tag": "WHY IT IS FAST",
+   "title": "Answers are kept",
+   "items": [
+    {
+     "text": "The resolver remembers",
+     "at": "remembers"
+    },
+    {
+     "text": "Each answer expires",
+     "at": "expires"
+    },
+    {
+     "text": "Repeat lookups skip the chain",
+     "at": "skips"
+    }
+   ],
+   "say": "The resolver remembers each answer until it expires, so a repeat lookup skips the whole chain.",
+   "keys": [
+    "remembers",
+    "skips"
+   ]
+  },
+  {
+   "id": "cta",
+   "type": "cta",
+   "title": "That is DNS",
+   "button": "More plain notes",
+   "url": "plainnotes.example",
+   "say": "That is DNS, the phone book of the internet.",
+   "keys": [
+    "DNS,",
+    "internet."
+   ]
+  }
+ ]
+}

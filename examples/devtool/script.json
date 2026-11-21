@@ -1,0 +1,156 @@
+{
+ "lead": 0.3,
+ "pause": 0.4,
+ "tail": 2.4,
+ "scenes": [
+  {
+   "id": "hook",
+   "type": "title",
+   "kicker": "DEMO · AN INVENTED TOOL",
+   "title": "Too many\nstale branches?",
+   "say": "Is your repo full of branches nobody remembers?",
+   "keys": [
+    "branches"
+   ]
+  },
+  {
+   "id": "mess",
+   "type": "code",
+   "tone": "problem",
+   "tag": "EXAMPLE OUTPUT",
+   "title": "It adds up",
+   "variant": "terminal",
+   "lines": [
+    {
+     "text": "$ git branch --merged | wc -l",
+     "at": "count"
+    },
+    {
+     "text": "41",
+     "tone": "problem",
+     "at": "forty"
+    }
+   ],
+   "highlight": {
+    "line": 2,
+    "at": "still"
+   },
+   "say": "Count the merged ones. Forty-one branches, all finished, all still here.",
+   "keys": [
+    "Forty-one",
+    "still"
+   ]
+  },
+  {
+   "id": "scan",
+   "type": "code",
+   "tone": "fix",
+   "tag": "EXAMPLE OUTPUT",
+   "title": "One command",
+   "variant": "terminal",
+   "lines": [
+    {
+     "text": "$ mothball scan",
+     "at": "scan"
+    },
+    {
+     "text": "41 merged, safe to archive",
+     "tone": "fix",
+     "at": "safe"
+    },
+    {
+     "text": "3 with unpushed work, kept",
+     "at": "kept"
+    },
+    {
+     "text": "$ mothball sweep --dry-run",
+     "at": "dry"
+    }
+   ],
+   "highlight": {
+    "line": 4,
+    "at": "first"
+   },
+   "say": "Run mothball scan. It lists what is safe to archive and what is kept. Then try a dry run first.",
+   "keys": [
+    "scan.",
+    "dry"
+   ]
+  },
+  {
+   "id": "config",
+   "type": "code",
+   "tag": "THE CONFIG",
+   "title": "Your rules",
+   "file": "mothball.toml",
+   "lang": "toml",
+   "lines": [
+    "# what is never archived",
+    {
+     "text": "keep = [\"main\", \"release/*\"]",
+     "at": "keep"
+    },
+    "",
+    {
+     "text": "# how old counts as stale",
+     "at": "old"
+    },
+    {
+     "text": "stale_after_days = 90",
+     "at": "ninety"
+    },
+    {
+     "text": "archive_to = \"refs/archive\"",
+     "at": "archive"
+    }
+   ],
+   "highlight": {
+    "line": 2,
+    "at": "never"
+   },
+   "say": "A small config file says what to keep, how old counts as stale, say ninety days, and where the archive goes. Main is never touched.",
+   "keys": [
+    "keep,",
+    "never"
+   ]
+  },
+  {
+   "id": "flow",
+   "type": "steps",
+   "tone": "fix",
+   "tag": "THE HABIT",
+   "title": "Scan, review, sweep",
+   "loop": true,
+   "loopAt": "again",
+   "items": [
+    {
+     "text": "Scan",
+     "at": "scan"
+    },
+    {
+     "text": "Review",
+     "at": "review"
+    },
+    {
+     "text": "Sweep",
+     "at": "sweep"
+    }
+   ],
+   "say": "Scan, review, sweep. Then do it again next month.",
+   "keys": [
+    "sweep."
+   ]
+  },
+  {
+   "id": "cta",
+   "type": "cta",
+   "title": "An invented tool, for this demo",
+   "button": "Read the docs",
+   "url": "mothball.example",
+   "say": "Mothball. Tidy branches, nothing lost.",
+   "keys": [
+    "lost."
+   ]
+  }
+ ]
+}

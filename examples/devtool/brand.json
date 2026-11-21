@@ -1,0 +1,68 @@
+{
+ "theme": "terminal",
+ "name": "mothball",
+ "format": "square",
+ "wordmark": [
+  {
+   "text": "moth"
+  },
+  {
+   "text": "ball",
+   "color": "accent"
+  }
+ ],
+ "logo": null,
+ "colors": {
+  "bg": "#060A07",
+  "panel": "#0C140E",
+  "panel2": "#132018",
+  "text": "#D7F5DC",
+  "soft": "#8FBF9A",
+  "mute": "#5A8266",
+  "accent": "#4ADE80",
+  "accent2": "#FACC15",
+  "good": "#22C55E",
+  "goodHi": "#86EFAC",
+  "bad": "#F87171",
+  "badHi": "#FCA5A5",
+  "onGood": "#04130A"
+ },
+ "fonts": {
+  "display": {
+   "family": "JetBrains Mono",
+   "file": "fonts/JetBrainsMono.ttf",
+   "style": "normal",
+   "weight": 700
+  },
+  "body": {
+   "family": "JetBrains Mono",
+   "file": "fonts/JetBrainsMono.ttf"
+  },
+  "mono": {
+   "family": "JetBrains Mono",
+   "file": "fonts/JetBrainsMono.ttf"
+  }
+ },
+ "background": "grid",
+ "style": {
+  "corners": 0.15,
+  "shadow": "none",
+  "borderColor": "accent",
+  "motion": "snappy",
+  "transition": "cut"
+ },
+ "captions": true,
+ "voice": "am_michael",
+ "speed": 1.05,
+ "lang": "en-us",
+ "pronounce": {
+  "\\bmothball\\b": "moth ball",
+  "\\bMothball\\b": "Moth ball"
+ },
+ "music": {
+  "on": true,
+  "bpm": 110,
+  "chords": "Am-Em-F-G",
+  "volume": 0.45
+ }
+}
