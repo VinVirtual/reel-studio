@@ -2,6 +2,13 @@ Fonts in this folder and their copyright notices (as stated inside each font fil
 
 Fraunces-Italic.ttf  Copyright 2020 The Fraunces Project Authors (github.com/undercasetype/Fraunces)
 Geist.ttf            Copyright 2024 The Geist Project Authors (https://github.com/vercel/geist-font)
+JetBrainsMono.ttf    Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+Anton-Regular.ttf    Copyright 2020 The Anton Project Authors (https://github.com/googlefonts/AntonFont.git)
+InstrumentSerif-Regular.ttf  Copyright 2022 The Instrument Serif Project Authors (https://github.com/Instrument/instrument-serif)
+Fredoka.ttf          Copyright 2016 The Fredoka Project Authors (https://github.com/hafontia/Fredoka-One)
+
+The last four files were taken unchanged from the Google Fonts repository (github.com/google/fonts, folders
+ofl/jetbrainsmono, ofl/anton, ofl/instrumentserif and ofl/fredoka), where each sits beside this same licence.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
