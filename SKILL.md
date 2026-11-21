@@ -61,7 +61,7 @@ Several videos in one project: name scripts `customers.json`, `vendors.json` and
 $R/reel build <dir> [script ...] --jobs 3 --web
 ```
 
-The same script in another shape: add `--format vertical|square|landscape|embed` to `lint`, `sheet`, `stills`, `video`, `web`, `build` or `preview`. brand.json is not changed, the files are named `<script>-<format>` (for example `out/script-square.mp4`), and the voice is shared. Lint and read the sheet for each shape: a layout that fits one shape can overflow another.
+The same script in another shape: add `--format vertical|square|landscape|embed` to `lint`, `sheet`, `stills`, `video`, `web`, `build` or `preview`. brand.json is not changed, the files are named `<script>-<format>` (for example `out/script-square.mp4`), and the voice is shared. Lint and read the sheet for each shape: a layout that fits one shape can overflow another. Do not name a script `<other>-<format>` (such as `promo-square.json`): its files would collide with `promo --format square`, and the command refuses to run.
 
 `build` runs voice and video (and the web copy with `--web`) for every script in the project, or only the ones named. It skips a script whose inputs have not changed (`--force` rebuilds), carries on past a failure, prints a summary, and exits non-zero if anything failed. Each script's output is in `build/<script>.build.log`.
 
@@ -129,7 +129,7 @@ Lists, comparisons, step flows, cards, chats, quotes, code and timelines shrink 
 ## Troubleshooting
 
 - **Text overflows a card:** run `reel lint`. Shorten the copy first. Otherwise lower `titleSize` or split the scene.
-- **Word timing:** `reel audio` prints where word times came from. Normally that is the voice model's own phoneme durations. If it says "estimated", it also says why (usually kokoro-onnx older than 0.6); things then appear up to a few tenths of a second early or late. `REEL_TIMING=estimate` forces the old estimate.
+- **Word timing:** `reel audio` prints where word times came from. Normally that is the voice model's own phoneme durations. If it says "estimated", it also says why (usually kokoro-onnx older than 0.6); things then appear up to a few tenths of a second early or late. `REEL_TIMING=estimate` forces the old estimate. Reading the durations makes `reel audio` peak at about 1.0 GB of memory while the model loads (about 0.56 GB with the estimate).
 - **Captions unreadable on a light background:** set `style.captions` to `box` or `highlight`, and run `reel lint` for the contrast warnings.
 - **A word is highlighted or timed on the wrong word:** check the `keys` and `at` spelling against `say` (lint reports words that are never spoken). `at` matches the first word equal to it, and otherwise the first word that starts with it.
 - **A name is mispronounced:** add it to `pronounce`. Spell it phonetically, or use hyphens for syllables.
