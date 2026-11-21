@@ -23,7 +23,8 @@
   "good": "#2fa8a2",
   "goodHi": "#45d6cf",
   "bad": "#D2675B",
-  "badHi": "#F0A79D"
+  "badHi": "#F0A79D",
+  "onGood": "#0a0f22"
  },
  "fonts": {
   "display": {
