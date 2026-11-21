@@ -121,5 +121,89 @@
     return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p
   }
 
-  g.ReelFit = { even, densify, fitRows, fitText, layoutDiagram, backLane, boxEdge, niceMax }
+  /** relative luminance (0 black .. 1 white) of a #rrggbb or #rgb colour, as WCAG defines it */
+  function luminance(hex) {
+    let h = String(hex).replace('#', ''); if (h.length === 3) h = h.replace(/./g, '$&$&')
+    const [r, gr, b] = [0, 2, 4].map((i) => { const v = parseInt(h.slice(i, i + 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) })
+    return 0.2126 * r + 0.7152 * gr + 0.0722 * b
+  }
+  /** WCAG contrast ratio of two colours, 1 (the same) to 21 (black on white) */
+  function contrast(a, b) {
+    const x = luminance(a), y = luminance(b)
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+  }
+
+  /* ---------- code scenes ---------- */
+  const HASH_LANGS = new Set(['', 'sh', 'bash', 'shell', 'zsh', 'python', 'py', 'yaml', 'yml', 'toml', 'ruby', 'rb', 'dockerfile', 'make', 'r', 'perl'])
+  const DASH_LANGS = new Set(['sql', 'lua', 'haskell'])
+  const PLAIN_LANGS = new Set(['text', 'plain', 'txt', 'none'])
+  const KEYWORDS = new Set(('const let var function return if else for while do break continue switch case default import from export class extends new this ' +
+    'async await try catch finally throw typeof instanceof in of def elif lambda pass with as yield not and or is fn pub use mod struct impl trait enum match mut ' +
+    'type interface package func go defer select where insert into values update set delete create table then fi done echo ' +
+    'true false null undefined None True False nil void int string bool float').split(' '))
+
+  /** One line of code as coloured pieces: [{ t, k }], k = text | comment | string | number | keyword | punct.
+      A small tokeniser, not a parser: line comments (// everywhere, # and -- by language), quoted strings,
+      numbers and common keywords. lang "text" switches the colouring off. Joining every t gives the line back. */
+  function codeTokens(line, lang = '') {
+    const src = String(line), l = String(lang || '').toLowerCase(), out = []
+    if (PLAIN_LANGS.has(l)) return src ? [{ t: src, k: 'text' }] : []
+    const push = (t, k) => { const last = out[out.length - 1]; if (last && last.k === k) last.t += t; else out.push({ t, k }) }
+    let i = 0
+    while (i < src.length) {
+      const ch = src[i], rest = src.slice(i)
+      // "//" after a colon is a URL, and "#" counts only at the start of a word in languages that use it
+      const comment = rest.startsWith('//') ? src[i - 1] !== ':' && !HASH_LANGS.has(l || '-')
+        : ch === '#' ? HASH_LANGS.has(l) && (i === 0 || /\s/.test(src[i - 1])) : rest.startsWith('--') && DASH_LANGS.has(l)
+      if (comment) { push(rest, 'comment'); break }
+      if (ch === '"' || ch === "'" || ch === '`') {
+        let j = i + 1
+        while (j < src.length && src[j] !== ch) j += src[j] === '\\' ? 2 : 1
+        push(src.slice(i, Math.min(src.length, j + 1)), 'string'); i = Math.min(src.length, j + 1); continue
+      }
+      const word = /^[A-Za-z_$][\w$]*/.exec(rest)
+      if (word) { push(word[0], KEYWORDS.has(word[0]) ? 'keyword' : 'text'); i += word[0].length; continue }
+      const number = /^\d[\d_]*(\.\d+)?/.exec(rest)
+      if (number) { push(number[0], 'number'); i += number[0].length; continue }
+      if (/\s/.test(ch)) { push(ch, out.length ? out[out.length - 1].k : 'text'); i++; continue }
+      push(ch, 'punct'); i++
+    }
+    return out
+  }
+
+  /** The lines of a code scene as [{ text, at, tone, cmd }]. Takes `lines` (strings or { text, at, tone } objects)
+      or one `code` string. In the terminal variant a line that starts with the prompt is a command (cmd: true). */
+  function codeLines(s) {
+    const raw = Array.isArray(s.lines) ? s.lines : typeof s.code === 'string' ? s.code.replace(/\n$/, '').split('\n') : []
+    const prompt = (s.prompt ?? '$') + ' '
+    return raw.map((l) => {
+      const o = typeof l === 'string' ? { text: l } : { ...l }, text = String(o.text ?? '').replace(/\t/g, '  ')
+      return { ...o, text, cmd: s.variant === 'terminal' && text.startsWith(prompt) }
+    })
+  }
+
+  /** `highlight` of a code scene as { lines: [0-based indexes], at }. Accepts 3, [2, 3] or { line | lines, at } (1-based). */
+  function codeHighlight(h, n) {
+    if (h === undefined || h === null || h === false) return { lines: [], at: null }
+    const o = typeof h === 'object' && !Array.isArray(h) ? h : { lines: h }
+    const list = [].concat(o.lines ?? o.line ?? []).map(Number).filter((v) => Number.isInteger(v) && v >= 1 && v <= n).map((v) => v - 1)
+    return { lines: [...new Set(list)], at: o.at || null }
+  }
+
+  /** Font size for a block of code: the largest size (from `size` down to `min`) at which `cols` characters fit
+      `width` and `rows` lines fit `height`. charW is the width of one character as a share of the font size. */
+  function fitCode({ cols, rows, width, height, size = 32, min = 14, charW = 0.6, lineH = 1.5 }) {
+    const best = Math.min(size, width / (Math.max(1, cols) * charW), height / (Math.max(1, rows) * lineH))
+    return { size: Math.max(min, Math.floor(best * 2) / 2), fits: best >= min }
+  }
+
+  /** How many of `len` characters are on screen at time t for a line that starts typing at t0, at `cps`
+      characters a second, and is complete by `until` at the latest (but never types in under 0.12 s). */
+  function typedChars(len, t, t0, cps = 40, until = Infinity) {
+    if (!(len > 0) || t <= t0) return 0
+    const d = Math.max(0.12, Math.min(len / cps, until - t0))
+    return Math.min(len, Math.floor((t - t0) / d * len + 1e-6))
+  }
+
+  g.ReelFit = { even, densify, fitRows, fitText, layoutDiagram, backLane, boxEdge, niceMax, luminance, contrast, codeTokens, codeLines, codeHighlight, fitCode, typedChars }
 })(globalThis)
