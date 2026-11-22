@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 import { ENGINE } from '../engine/lib/env.mjs'
 
-const python = ['python3', 'python'].find((p) => spawnSync(p, ['-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)']).status === 0)
+const python = ['python3', 'python'].find((p) => spawnSync(p, ['-I', '-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)'], { cwd: ENGINE }).status === 0)
 
 test('word_timing.py: exposing the duration output and lining words up with phonemes', { skip: python ? false : 'no python3 on this machine' }, () => {
   const r = spawnSync(python, [join(ENGINE, 'word_timing.py'), '--selftest'], { encoding: 'utf8' })

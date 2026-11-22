@@ -19,8 +19,10 @@ miss() { ok=0; echo "MISS $1"; shift; for line in "$@"; do echo "       $line"; 
 if [ -n "${REEL_PYTHON:-}" ]; then PY="$REEL_PYTHON"
 elif [ -x "$K/.venv/bin/python" ]; then PY="$K/.venv/bin/python"
 else PY="$(command -v python3 || true)"; fi
+# Python probes run isolated (-I) from the skill folder, so modules planted in the current folder cannot run.
+pyprobe() { (cd "$R" && "$PY" -I -c "$1") 2>/dev/null; }
 
-if [ -n "$PY" ] && "$PY" -c "import kokoro_onnx, soundfile, numpy" 2>/dev/null; then good "python with kokoro-onnx ($PY)"
+if [ -n "$PY" ] && pyprobe "import kokoro_onnx, soundfile, numpy"; then good "python with kokoro-onnx ($PY)"
 else miss "python with kokoro-onnx, soundfile and numpy" \
   "python3 -m venv \"$K/.venv\"" \
   "\"$K/.venv/bin/pip\" install kokoro-onnx soundfile numpy imageio-ffmpeg" \
@@ -34,7 +36,7 @@ else miss "kokoro model files (about 340 MB)" \
 
 if [ -n "${FF:-}" ] && [ -x "$FF" ]; then good "ffmpeg ($FF)"
 elif command -v ffmpeg >/dev/null 2>&1; then good "ffmpeg ($(command -v ffmpeg))"
-elif [ -n "$PY" ] && "$PY" -c "import imageio_ffmpeg; imageio_ffmpeg.get_ffmpeg_exe()" 2>/dev/null; then good "ffmpeg (from the imageio-ffmpeg Python package)"
+elif [ -n "$PY" ] && pyprobe "import imageio_ffmpeg; imageio_ffmpeg.get_ffmpeg_exe()"; then good "ffmpeg (from the imageio-ffmpeg Python package)"
 else miss "ffmpeg" "install ffmpeg (apt install ffmpeg / brew install ffmpeg), or: \"${PY:-python3}\" -m pip install imageio-ffmpeg"; fi
 
 if ! command -v node >/dev/null 2>&1; then miss "node (version 18 or newer)" "install Node.js from https://nodejs.org, or with nvm or brew"

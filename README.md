@@ -101,7 +101,7 @@ Everything is found in default places that you can change with environment varia
 | `KOKORO_MODEL`, `KOKORO_VOICES` | `$KOKORO_HOME/kokoro-v1.0.onnx`, `$KOKORO_HOME/voices-v1.0.bin` | the two model files |
 | `REEL_PYTHON` | `$KOKORO_HOME/.venv/bin/python`, else `python3` | Python that has kokoro-onnx |
 | `FF` | `ffmpeg` on PATH, else the one from imageio-ffmpeg | ffmpeg binary |
-| `PLAYWRIGHT_CORE` | found through node and `npm root -g` | folder of playwright-core |
+| `PLAYWRIGHT_CORE` | found through node from the skill folder, then `npm root -g`; never the current folder | folder of playwright-core |
 | `REEL_CHROME` | installed Chrome, then other browsers found, then Playwright's Chromium | browser binary to try first |
 
 ## Quick start
